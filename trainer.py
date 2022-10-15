@@ -18,13 +18,13 @@ class Trainer():
         self.seq_out_len = seq_out_len
         self.cl = cl
         self.mask = mask
-    def train(self, input, real_val):
+    def train(self, input, real):
         self.model.train()
         self.optimizer.zero_grad()
-        output = self.model(input)
-        output = output.transpose(1,3)
-        real = real_val
+        output = self.model(input, labels=real, batch_seen=self.iter)
+        # output = output.transpose(1,3)
         predict = self.scaler.inverse_transform(output)
+        real = self.scaler.inverse_transform(real)
         assert predict.shape == real.shape, f'{predict.shape}, {real.shape}'
         if self.iter%self.step==0 and self.task_level<=self.seq_out_len:
             self.task_level +=1           
@@ -32,9 +32,9 @@ class Trainer():
             #     print('task_level:',self.task_level)
         if self.cl:
             if self.mask:           
-                loss = self.loss(predict[:, :, :, :self.task_level], real[:, :, :, :self.task_level], 0.0)
+                loss = self.loss(predict[:, :self.task_level, :, :], real[:, :self.task_level, :, :], 0.0)
             else:
-                 loss = self.loss(predict[:, :, :, :self.task_level], real[:, :, :, :self.task_level])
+                 loss = self.loss(predict[:, :self.task_level, :, :], real[:, :self.task_level, :, :])
         else:
             if self.mask:
                 loss = self.loss(predict, real, 0.0)
@@ -51,14 +51,13 @@ class Trainer():
         self.iter += 1
         return loss.item()
 
-    def eval(self, input, real_val):
+    def eval(self, input, real):
         self.model.eval()
         output = self.model(input)
-        output = output.transpose(1,3)
+        # output = output.transpose(1,3)
         #real = torch.unsqueeze(real_val,dim=1)
-        real = real_val
         predict = self.scaler.inverse_transform(output)
-        
+        real = self.scaler.inverse_transform(real)
         #scores =get_scores(predict, real, self.mask, 'multi')
 
         # mape = util.masked_mape(predict,real,0.0).item()

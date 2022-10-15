@@ -1,0 +1,22 @@
+{
+    "model_name": "ESG",
+    "data": "nyc-bike",
+    "device": "cuda:0",
+    "expid": "ESG-bike",
+    "epochs": 300,
+    "early_stop": true,
+    "early_stop_steps": 30,
+    "print_interval": 50,
+    "runs": 1,
+
+    "window": 12,
+    "horizon": 12,
+
+    "mask0": false,
+    "cl": false,
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "clip": 5,
+    "step_size": 2500
+}

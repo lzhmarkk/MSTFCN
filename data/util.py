@@ -1,13 +1,27 @@
-import argparse
-import numpy as np
 import os
-import pandas as pd
 import h5py
+import numpy as np
+import pandas as pd
 
-import os
+
+def normal_std(x):
+    return x.std() * np.sqrt((len(x) - 1.) / (len(x)))
+
+
+class StandardScaler:
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def transform(self, data):
+        return (data - self.mean) / self.std
+
+    def inverse_transform(self, data):
+        return (data * self.std) + self.mean
+
 
 def generate_graph_seq2seq_io_data(
-        df, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
+        df, time, x_offsets, y_offsets, add_time_in_day=False, add_day_in_week=False, scaler=None
 ):
     """
     Generate samples from
@@ -26,13 +40,12 @@ def generate_graph_seq2seq_io_data(
     data_list = [df]
 
     if add_time_in_day:
-        df.index = pd.to_datetime(df.index,format = '%Y-%m-%d %H:%M:%S')
-        time_ind = (df.index.values - df.index.values.astype("datetime64[D]")) / np.timedelta64(1, "D")
+        time = pd.to_datetime(time, format='%Y-%m-%d %H:%M:%S')
+        time_ind = (time.values - time.values.astype("datetime64[D]")) / np.timedelta64(1, "D")
         time_in_day = np.tile(time_ind, [1, num_nodes, 1]).transpose((2, 1, 0))
         data_list.append(time_in_day)
     if add_day_in_week:
-        day_in_week = np.zeros(shape=(num_samples, num_nodes, 7))
-        day_in_week[np.arange(num_samples), :, df.index.dayofweek] = 1
+        day_in_week = np.tile(time.dayofweek, [1, num_nodes, 1]).transpose((2, 1, 0))
         data_list.append(day_in_week)
 
     data = np.concatenate(data_list, axis=-1)
@@ -52,39 +65,40 @@ def generate_graph_seq2seq_io_data(
     return x, y
 
 
-def generate_train_val_test(args):
-    h5_path = os.path.join('h5data',args.h5_name+'.h5')
+def generate_train_val_test(h5_name, window, horizon, add_time_in_day=False, add_day_in_week=False):
+    # 30min
+    h5_path = os.path.join('./data/h5data', h5_name + '.h5')
     df = h5py.File(h5_path, 'r')
-    rawdata = []
-    for feature in ["pick", "drop"]:
-        key = args.h5_name[-4:] + "_" + feature
-        data = np.array(df[key])
-        rawdata.append(data)
-    
-    rawdata = np.stack(rawdata, -1)
+    rawdata = np.array(df['raw_data']).astype(float)
+
+    if 'time' in df:
+        time = df['time']
+    else:
+        time = None
 
     x_offsets = np.sort(
-        np.concatenate((np.arange(-(args.window-1), 1, 1),))
+        np.concatenate((np.arange(-(window - 1), 1, 1),))
     )
-   
-    y_offsets = np.sort(np.arange(1, args.horizon+1, 1))
+
+    y_offsets = np.sort(np.arange(1, horizon + 1, 1))
 
     x, y = generate_graph_seq2seq_io_data(
         rawdata,
+        time,
         x_offsets=x_offsets,
         y_offsets=y_offsets,
-        add_time_in_day=False,
-        add_day_in_week=False,
+        add_time_in_day=add_time_in_day,
+        add_day_in_week=add_day_in_week,
     )
     # x: (num_samples, input_length, num_nodes, input_dim)
-    # y: (num_samples, output_length, num_nodes, output_dim) 
+    # y: (num_samples, output_length, num_nodes, output_dim)
     print("x shape: ", x.shape, ", y shape: ", y.shape)
 
     # Write the data into npz file.
     num_samples = x.shape[0]
-    num_test = 672
-    num_val = 672
-    num_train = num_samples - num_test - num_val
+    num_train = round(num_samples * 0.7)
+    num_val = round(num_samples * 0.15)
+    num_test = num_samples - num_train - num_val
 
     # train
     x_train, y_train = x[:num_train], y[:num_train]
@@ -95,8 +109,9 @@ def generate_train_val_test(args):
     )
     # test
     x_test, y_test = x[-num_test:], y[-num_test:]
-    
-    save_folder =  os.path.join(args.h5_name)
+
+    """
+    save_folder =  os.path.join(h5_name)
     os.mkdir(save_folder)
     for cat in ["train", "val", "test"]:
         _x, _y = locals()["x_" + cat], locals()["y_" + cat]
@@ -108,27 +123,5 @@ def generate_train_val_test(args):
             x_offsets=x_offsets.reshape(list(x_offsets.shape) + [1]),
             y_offsets=y_offsets.reshape(list(y_offsets.shape) + [1]),
         )
-
-
-def main(args):
-    print("Generating training data")
-    generate_train_val_test(args)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--h5_name",
-        type=str,
-        default="nyc-bike",
-        help="Raw data",
-    )
-    parser.add_argument(
-        "--window", type=int, default=12, help="the length of history seq"
-    )
-    parser.add_argument(
-        "--horizon", type=int, default=12, help="the length of predict seq"
-    )
-    
-    args = parser.parse_args()
-    main(args)
+    """
+    return [x_train, y_train], [x_val, y_val], [x_test, y_test]

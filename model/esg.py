@@ -184,15 +184,15 @@ class ESG(nn.Module):
             nn.Conv2d(end_channels, final_channels, kernel_size=(1,1), bias=True)     
         )
         self.stfea_encode = NodeFeaExtractor(st_embedding_dim, fc_dim)
-        self.static_feat = static_feat
+        self.static_feat = static_feat  # (T*input_dim, N)
        
 
-    def forward(self, input):
+    def forward(self, input, **kwargs):
         """
-        :param input: [B, in_dim, N, n_hist]
+        :param input: [B, n_his, N, in_dim]
         :return: [B, n_pred, N, out_dim]
         """
-
+        input = input.transpose(1, 3)
         b, _, n, t = input.shape
         assert t==self.seq_length, 'input sequence length not equal to preset sequence length'
 

@@ -1,0 +1,6 @@
+.idea/
+data/original
+data/h5data
+saves/
+__pycache__/
+*/__pycache__/

@@ -15,7 +15,7 @@ class NodeFeaExtractor(nn.Module):
 
     def forward(self, node_fea):
         t, n = node_fea.shape
-        x = node_fea.transpose(1, 0).reshape(n, 1, -1)
+        x = node_fea.transpose(1, 0).reshape(n, 1, -1)  # (N, 1, input_dim*T)
         x = self.conv1(x)
         x = torch.relu(x)
         x = self.bn1(x)
