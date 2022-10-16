@@ -51,7 +51,7 @@ def main(runid):
                 tx = torch.Tensor(x).to(args.device)  # [B,T,N,C]
                 ty = torch.Tensor(y).to(args.device)  # [B,T,N,C]
 
-                loss = engine.train(tx, ty[:, :, :, :args.output_dim])
+                loss = engine.train(tx, ty[..., :args.output_dim], ty[..., args.output_dim:])
                 train_loss.append(loss)
 
                 if iter % args.print_interval == 0 :
@@ -68,7 +68,7 @@ def main(runid):
                 testx = torch.Tensor(x).to(args.device)
                 testy = torch.Tensor(y).to(args.device)
 
-                vloss = engine.eval(testx, testy[:, :, :, :args.output_dim])
+                vloss = engine.eval(testx, testy[..., :args.output_dim], testy[..., args.output_dim:])
                 valid_loss.append(vloss)
 
             s2 = time.time()
@@ -127,8 +127,9 @@ def main(runid):
 
     for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
         testx = torch.Tensor(x).to(args.device)
+        testy = torch.Tensor(y).to(args.device)
         with torch.no_grad():
-            preds = engine.model(testx)  # [B,T,N,C]
+            preds = engine.model(testx, pred_time=testy[..., args.output_dim:])  # [B,T,N,C]
         outputs.append(preds) # [B,T,N,C]
 
     yhat = torch.cat(outputs,dim=0)
@@ -154,8 +155,9 @@ def main(runid):
 
     for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
         testx = torch.Tensor(x).to(args.device)
+        testy = torch.Tensor(y).to(args.device)
         with torch.no_grad():
-            preds = engine.model(testx)  #[B,T,N,C]
+            preds = engine.model(testx, pred_time=testy[..., args.output_dim:])  #[B,T,N,C]
         outputs.append(preds)#[B,T,N,C]
 
     yhat = torch.cat(outputs, dim=0)

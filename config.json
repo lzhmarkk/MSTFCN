@@ -1,8 +1,8 @@
 {
-    "model_name": "ESG",
+    "model_name": "GMAN",
     "data": "nyc-bike",
     "device": "cuda:0",
-    "expid": "ESG-bike",
+    "expid": "GMAN-bike",
     "epochs": 300,
     "early_stop": true,
     "early_stop_steps": 30,

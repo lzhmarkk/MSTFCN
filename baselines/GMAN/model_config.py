@@ -1,0 +1,8 @@
+config = {
+    "time_slot": 5,
+    "L": 3,
+    "K": 8,
+    "d": 8,
+    "bn_decay": 0.1,
+    "add_time": True
+}

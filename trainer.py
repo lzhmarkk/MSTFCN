@@ -18,10 +18,10 @@ class Trainer():
         self.seq_out_len = seq_out_len
         self.cl = cl
         self.mask = mask
-    def train(self, input, real):
+    def train(self, input, real, pred_time):
         self.model.train()
         self.optimizer.zero_grad()
-        output = self.model(input, labels=real, batch_seen=self.iter)
+        output = self.model(input, real=real, pred_time=pred_time, batch_seen=self.iter)
         # output = output.transpose(1,3)
         predict = self.scaler.inverse_transform(output)
         real = self.scaler.inverse_transform(real)
@@ -51,9 +51,9 @@ class Trainer():
         self.iter += 1
         return loss.item()
 
-    def eval(self, input, real):
+    def eval(self, input, real, pred_time):
         self.model.eval()
-        output = self.model(input)
+        output = self.model(input, pred_time=pred_time)
         # output = output.transpose(1,3)
         #real = torch.unsqueeze(real_val,dim=1)
         predict = self.scaler.inverse_transform(output)

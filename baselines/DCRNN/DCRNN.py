@@ -338,7 +338,7 @@ class DCRNN(nn.Module):
         :return: output: (B, T, N, C)
         """
         bs = inputs.shape[0]
-        labels = kwargs.get('labels')
+        labels = kwargs.get('real')
         batches_seen = kwargs.get('batch_seen')
 
         inputs = inputs.transpose(1, 0).reshape(self.window, bs, self.num_nodes * self.input_dim)

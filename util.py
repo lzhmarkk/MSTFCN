@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import pandas as pd
 from model.esg import ESG
-from baselines import DCRNN
+from baselines import *
 from data.dataloader import StandardScaler
 
 
@@ -46,6 +46,8 @@ def get_config():
         from model.model_config import config as model_cfg  # load model config
     elif model == 'DCRNN':
         from baselines.DCRNN.model_config import config as model_cfg
+    elif model == 'GMAN':
+        from baselines.GMAN.model_config import config as model_cfg
     else:
         raise ValueError()
 
@@ -67,6 +69,15 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
         ret['num_batches'] = math.ceil(len(df['raw_data']) / args.batch_size)
+    elif args.model_name == 'GMAN':
+        from baselines.GMAN.SE import load_se_file
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj_mx'] = np.array(df['adjacency_matrix'])
+        se = load_se_file(adj_mx=ret['adj_mx'],
+                          adj_file=os.path.join('./baselines/GMAN', args.data + '_adj.edgelist'),
+                          se_file=os.path.join('./baselines/GMAN', args.data + '_se'))
+        # ret['se'] = np.repeat(se, args.input_dim, axis=0)
+        ret['se'] = se
     else:
         raise ValueError()
     return ret
@@ -86,6 +97,9 @@ def get_model(args):
                       cl_decay_steps=args.step_size, filter_type=args.filter_type, num_nodes=args.num_nodes,
                       num_rnn_layers=args.num_rnn_layers, rnn_units=args.rnn_units, use_curriculum_learning=args.cl,
                       input_dim=args.input_dim, window=args.window, output_dim=args.output_dim, horizon=args.horizon)
+    elif args.model_name == 'GMAN':
+        model = GMAN(SE=args.se, device=args.device, L=args.L, K=args.K, d=args.d, bn_decay=args.bn_decay,
+                     window=args.window, input_dim=args.input_dim, output_dim=args.output_dim)
     else:
         raise ValueError()
     return model
