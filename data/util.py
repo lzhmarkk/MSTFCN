@@ -72,7 +72,7 @@ def generate_train_val_test(h5_name, window, horizon, add_time_in_day=False, add
     rawdata = np.array(df['raw_data']).astype(float)
 
     if 'time' in df:
-        time = df['time']
+        time = np.array(df['time']).astype(np.datetime64)
     else:
         time = None
 

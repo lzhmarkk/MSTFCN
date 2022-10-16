@@ -44,7 +44,7 @@ if __name__ == '__main__':
             drop_np[end_bin, end_station] += 1
 
         # to df and set index
-        time = np.array(pd.date_range(init_time, end_time, freq="15min").strftime('%Y-%m-%d %H:%M:%S'))
+        time = np.array(pd.date_range(init_time, end_time, freq="30min").strftime('%Y-%m-%d %H:%M:%S'))
         data = np.stack([pick_np, drop_np], -1)
         f = h5py.File(f"./h5data/chicago-bike.h5", 'w')
         f.create_dataset("raw_data", data=data)
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             drop_np[end_bin, end_station] += 1
 
         # to df and set index
-        time = np.array(pd.date_range(init_time, end_time, freq="15min").strftime('%Y-%m-%d %H:%M:%S'))
+        time = np.array(pd.date_range(init_time, end_time, freq="30min").strftime('%Y-%m-%d %H:%M:%S'))
 
         f = h5py.File(f"./h5data/chicago-taxi.h5", 'w')
         data = np.stack([pick_np, drop_np], -1)
