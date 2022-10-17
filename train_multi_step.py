@@ -35,74 +35,67 @@ def main(runid):
     writer = SummaryWriter(run_folder)
 
     engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size, args.horizon, args.scaler, args.device, args.cl, args.mask0)
-    
-    try:
-        print("start training...",flush=True)
-        his_loss =[]
-        val_time = []
-        train_time = []
-        minl = 1e5
-        best_epoch = 1e5
-        for i in range(args.epochs):
-            train_loss = []
-            t1 = time.time()
-            # dataloader['train_loader'].shuffle()
-            for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
-                tx = torch.Tensor(x).to(args.device)  # [B,T,N,C]
-                ty = torch.Tensor(y).to(args.device)  # [B,T,N,C]
 
-                loss = engine.train(tx, ty[..., :args.output_dim], ty[..., args.output_dim:])
-                train_loss.append(loss)
+    print("start training...",flush=True)
+    his_loss =[]
+    val_time = []
+    train_time = []
+    minl = 1e5
+    best_epoch = 1e5
+    for i in range(args.epochs):
+        train_loss = []
+        t1 = time.time()
+        # dataloader['train_loader'].shuffle()
+        for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
+            tx = torch.Tensor(x).to(args.device)  # [B,T,N,C]
+            ty = torch.Tensor(y).to(args.device)  # [B,T,N,C]
 
-                if iter % args.print_interval == 0 :
-                    log = 'Iter: {:03d}, Train Loss: {:.4f}'
-                    print(log.format(iter, train_loss[-1]),flush=True)
-            t2 = time.time()
-            train_time.append(t2-t1)
-            #validation
-            valid_loss = []
+            loss = engine.train(tx, ty[..., :args.output_dim], ty[..., args.output_dim:])
+            train_loss.append(loss)
 
-
-            s1 = time.time()
-            for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
-                testx = torch.Tensor(x).to(args.device)
-                testy = torch.Tensor(y).to(args.device)
-
-                vloss = engine.eval(testx, testy[..., :args.output_dim], testy[..., args.output_dim:])
-                valid_loss.append(vloss)
-
-            s2 = time.time()
-            log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
-            print(log.format(i,(s2-s1)))
-            val_time.append(s2-s1)
-            mtrain_loss = np.mean(train_loss)
-
-            mvalid_loss = np.mean(valid_loss)
-            his_loss.append(mvalid_loss)
+            if iter % args.print_interval == 0 :
+                log = 'Iter: {:03d}, Train Loss: {:.4f}'
+                print(log.format(iter, train_loss[-1]),flush=True)
+        t2 = time.time()
+        train_time.append(t2-t1)
+        #validation
+        valid_loss = []
 
 
-            log = 'Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, Training Time: {:.4f}/epoch'
-            print(log.format(i, mtrain_loss, mvalid_loss, (t2 - t1)),flush=True)
-            writer.add_scalars('loss', {'train':mtrain_loss}, global_step=i )
-            writer.add_scalars('loss', {'valid':mvalid_loss}, global_step=i )
+        s1 = time.time()
+        for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
+            testx = torch.Tensor(x).to(args.device)
+            testy = torch.Tensor(y).to(args.device)
+
+            vloss = engine.eval(testx, testy[..., :args.output_dim], testy[..., args.output_dim:])
+            valid_loss.append(vloss)
+
+        s2 = time.time()
+        log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
+        print(log.format(i,(s2-s1)))
+        val_time.append(s2-s1)
+        mtrain_loss = np.mean(train_loss)
+
+        mvalid_loss = np.mean(valid_loss)
+        his_loss.append(mvalid_loss)
 
 
-            if mvalid_loss<minl:
-                with open(model_path, 'wb') as f:
-                    torch.save(engine.model, f)
-                #torch.save(engine.model.state_dict(), os.path.join(save_folder,"exp.pth"))
-                minl = mvalid_loss
-                best_epoch = i
-                print(f'save best epoch {best_epoch} *****************')
-            elif args.early_stop and  i - best_epoch > args.early_stop_steps:
-                print('best epoch:', best_epoch)
-                raise ValueError('Early stopped.')
+        log = 'Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, Training Time: {:.4f}/epoch'
+        print(log.format(i, mtrain_loss, mvalid_loss, (t2 - t1)),flush=True)
+        writer.add_scalars('loss', {'train':mtrain_loss}, global_step=i )
+        writer.add_scalars('loss', {'valid':mvalid_loss}, global_step=i )
 
-    except (ValueError, KeyboardInterrupt) as e:
-        print(e)
-        print('-' * 89)
-        print('Exiting from training early')
 
+        if mvalid_loss<minl:
+            with open(model_path, 'wb') as f:
+                torch.save(engine.model, f)
+            #torch.save(engine.model.state_dict(), os.path.join(save_folder,"exp.pth"))
+            minl = mvalid_loss
+            best_epoch = i
+            print(f'save best epoch {best_epoch} *****************')
+        elif args.early_stop and  i - best_epoch > args.early_stop_steps:
+            print('best epoch:', best_epoch)
+            break
 
     print("Average Training Time: {:.4f} secs/epoch".format(np.mean(train_time)))
     print("Average Inference Time: {:.4f} secs".format(np.mean(val_time)))

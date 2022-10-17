@@ -1,8 +1,8 @@
 {
-    "model_name": "GMAN",
+    "model_name": "GWNet",
     "data": "nyc-bike",
     "device": "cuda:0",
-    "expid": "GMAN-bike",
+    "expid": "GWNet-bike",
     "epochs": 300,
     "early_stop": true,
     "early_stop_steps": 30,
@@ -14,7 +14,7 @@
 
     "mask0": false,
     "cl": false,
-    "batch_size": 16,
+    "batch_size": 32,
     "learning_rate": 0.001,
     "weight_decay": 0.0001,
     "clip": 5,

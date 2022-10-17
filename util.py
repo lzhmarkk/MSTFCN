@@ -45,9 +45,14 @@ def get_config():
     if model == 'ESG':
         from model.model_config import config as model_cfg  # load model config
     elif model == 'DCRNN':
-        from baselines.DCRNN.model_config import config as model_cfg
+        with open(f"./baselines/DCRNN/config.json", 'r') as f:
+            model_cfg = json.load(f)
     elif model == 'GMAN':
-        from baselines.GMAN.model_config import config as model_cfg
+        with open(f"./baselines/GMAN/config.json", 'r') as f:
+            model_cfg = json.load(f)
+    elif model == 'GWNet':
+        with open(f"./baselines/GWNet/config.json", 'r') as f:
+            model_cfg = json.load(f)
     else:
         raise ValueError()
 
@@ -76,10 +81,11 @@ def get_auxiliary(args, dataloader):
         se = load_se_file(adj_mx=ret['adj_mx'],
                           adj_file=os.path.join('./baselines/GMAN', args.data + '_adj.edgelist'),
                           se_file=os.path.join('./baselines/GMAN', args.data + '_se'))
-        # ret['se'] = np.repeat(se, args.input_dim, axis=0)
-        ret['se'] = se
-    else:
-        raise ValueError()
+        ret['se'] = np.repeat(se, args.input_dim, axis=0)
+        # ret['se'] = se
+    elif args.model_name == 'GWNet':
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj_mx'] = np.array(df['adjacency_matrix'])
     return ret
 
 
@@ -100,6 +106,11 @@ def get_model(args):
     elif args.model_name == 'GMAN':
         model = GMAN(SE=args.se, device=args.device, L=args.L, K=args.K, d=args.d, bn_decay=args.bn_decay,
                      window=args.window, input_dim=args.input_dim, output_dim=args.output_dim)
+    elif args.model_name == 'GWNet':
+        model = GWNet(adj_mx=args.adj_mx, device=args.device, adjtype=args.adjtype, randomadj=args.randomadj, aptonly=args.aptonly,
+                      nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim, num_nodes=args.num_nodes,
+                      kernel_size=args.kernel_size, horizon=args.horizon, window=args.window, dropout=args.dropout,
+                      blocks=args.blocks, layers=args.layers, gcn_bool=args.gcn_bool, addaptadj=args.addaptadj)
     else:
         raise ValueError()
     return model
