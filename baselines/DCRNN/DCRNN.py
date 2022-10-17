@@ -254,7 +254,6 @@ class DecoderModel(nn.Module, Seq2SeqAttrs):
 class DCRNN(nn.Module):
     def __init__(self, adj_mx, num_batches, device, max_diffusion_step, cl_decay_steps, filter_type, num_nodes,
                  num_rnn_layers, rnn_units, use_curriculum_learning, input_dim, window, output_dim, horizon):
-        # todo tune parameter to get performance, 20221015 lzhmark
         super().__init__()
         self.adj_mx = adj_mx
         self.num_batches = num_batches

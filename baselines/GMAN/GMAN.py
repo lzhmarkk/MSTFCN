@@ -335,9 +335,9 @@ class GMAN(nn.Module):
         self.STAttBlock_1 = nn.ModuleList([STAttBlock(self.K, self.d, self.device, self.bn_decay) for _ in range(self.L)])
         self.STAttBlock_2 = nn.ModuleList([STAttBlock(self.K, self.d, self.device, self.bn_decay) for _ in range(self.L)])
         self.transformAttention = transformAttention(self.K, self.d, self.bn_decay, self.device)
-        self.FC_1 = FC(input_dims=[self.input_dim, self.D], units=[self.D, self.D], activations=[F.relu, None],
+        self.FC_1 = FC(input_dims=[1, self.D], units=[self.D, self.D], activations=[F.relu, None],
                        bn_decay=self.bn_decay, device=self.device)
-        self.FC_2 = FC(input_dims=[self.D, self.D], units=[self.D, self.output_dim], activations=[F.relu, None],
+        self.FC_2 = FC(input_dims=[self.D, self.D], units=[self.D, 1], activations=[F.relu, None],
                        bn_decay=self.bn_decay, device=self.device)
 
         self.to(self.device)
@@ -346,11 +346,12 @@ class GMAN(nn.Module):
         # input
         # print('X.shape: ', X.shape) #[batch_size, seq_length, nodes_num, input_dim + time]
         X = input[..., :self.input_dim]  # [batch_size, seq_length, nodes_num, input_dim]
+        X = X.reshape(X.shape[0], X.shape[1], -1).unsqueeze(dim=-1)
         his_time = input[:, :, 0, self.input_dim:]
         pred_time = kwargs['pred_time'][:, :, 0, :]
         TE = torch.cat([his_time, pred_time], 1)  # [batch_size, seq_length, time=2]
         # print('X.shape: ', X.shape)
-        X = self.FC_1(X)  # (bs, window, num_nodes, self.D)
+        X = self.FC_1(X)  # (bs, window, num_nodes*input_dim, self.D)
         # print('X.shape: ', X.shape)
         # STE
         # print('TE.shape: ', TE.shape) #[batch_size, his+pre, 2]
@@ -373,4 +374,5 @@ class GMAN(nn.Module):
         # print('X.shape: ', X.shape)
         del STE, STE_his, STE_pred
         # exit()
+        X = X.reshape(X.shape[0], X.shape[1], input.shape[2], self.output_dim)
         return X  # [batch_size, seq_length, num_nodes, output_dim]
