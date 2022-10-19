@@ -53,8 +53,11 @@ def get_config():
     elif model == 'GWNet':
         with open(f"./baselines/GWNet/config.json", 'r') as f:
             model_cfg = json.load(f)
+    elif model == "STID":
+        with open(f"./baselines/STID/config.json", 'r') as f:
+            model_cfg = json.load(f)
     else:
-        raise ValueError()
+        raise ValueError(f"Model config file for model {model} is not found")
 
     cfg = types.SimpleNamespace()
     for c in [run_cfg, model_cfg, data_cfg]:
@@ -86,6 +89,10 @@ def get_auxiliary(args, dataloader):
     elif args.model_name == 'GWNet':
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
+    elif args.model_name == "STID":
+        pass
+    else:
+        raise ValueError(f"Auxiliary data for model {args.model_name} is not found")
     return ret
 
 
@@ -111,8 +118,12 @@ def get_model(args):
                       nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim, num_nodes=args.num_nodes,
                       kernel_size=args.kernel_size, horizon=args.horizon, window=args.window, dropout=args.dropout,
                       blocks=args.blocks, layers=args.layers, gcn_bool=args.gcn_bool, addaptadj=args.addaptadj)
+    elif args.model_name == "STID":
+        model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
+                     input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,
+                     num_mlp_layers=args.num_mlp_layers, temp_dim_tid=args.temp_dim_tid, temp_dim_diw=args.temp_dim_diw)
     else:
-        raise ValueError()
+        raise ValueError(f"Model {args.model_name} is not found")
     return model
 
 
