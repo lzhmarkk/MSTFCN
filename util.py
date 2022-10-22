@@ -56,6 +56,9 @@ def get_config():
     elif model == 'MTGNN':
         with open(f"./baselines/MTGNN/config.json", 'r') as f:
             model_cfg = json.load(f)
+    elif model == 'STGCN':
+        with open(f"./baselines/STGCN/config.json", 'r') as f:
+            model_cfg = json.load(f)
     elif model == "STID":
         with open(f"./baselines/STID/config.json", 'r') as f:
             model_cfg = json.load(f)
@@ -95,6 +98,11 @@ def get_auxiliary(args, dataloader):
     elif args.model_name == "MTGNN":
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
+    elif args.model_name == "STGCN":
+        from baselines.STGCN.norm_adj_mx import get_normalized_adj
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        adj_mx = np.array(df['adjacency_matrix'])
+        ret['adj_mx'] = get_normalized_adj(adj_mx)
     elif args.model_name == "STID":
         pass
     else:
@@ -135,6 +143,9 @@ def get_model(args):
         model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,
                      num_mlp_layers=args.num_mlp_layers, temp_dim_tid=args.temp_dim_tid, temp_dim_diw=args.temp_dim_diw)
+    elif args.model_name == 'STGCN':
+        model = STGCN(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
+                      output_dim=args.output_dim, window=args.window, horizon=args.horizon)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
