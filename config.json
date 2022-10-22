@@ -1,8 +1,8 @@
 {
-    "model_name": "STID",
+    "model_name": "MTGNN",
     "data": "nyc-bike",
-    "device": "cpu",
-    "expid": "STID-bike",
+    "device": "cuda:0",
+    "expid": "MTGNN-bike",
     "epochs": 300,
     "early_stop": true,
     "early_stop_steps": 30,
