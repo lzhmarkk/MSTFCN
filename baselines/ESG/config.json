@@ -1,0 +1,16 @@
+{
+    "dy_embedding_dim": 20,
+    "dy_interval": [1, 1, 1],
+    "layers": 3,
+    "conv_channels": 32,
+    "residual_channels": 32,
+    "skip_channels": 64,
+    "end_channels": 128,
+    "kernel_set": [2, 6],
+    "dilation_exponential": 1,
+    "gcn_depth": 2,
+    "st_embedding_dim": 40,
+    "dropout": 0.3,
+    "propalpha": 0.05,
+    "add_time": false
+}

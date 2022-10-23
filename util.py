@@ -5,11 +5,9 @@ import json
 import h5py
 import types
 import torch
+import random
 import numpy as np
-import pandas as pd
-from model.esg import ESG
 from baselines import *
-from data.dataloader import StandardScaler
 
 
 class Logger(object):
@@ -42,28 +40,8 @@ def get_config():
     with open(f"./data/config/{dataset}.json", 'r') as f:
         data_cfg = json.load(f)
 
-    if model == 'ESG':
-        from model.model_config import config as model_cfg  # load model config
-    elif model == 'DCRNN':
-        with open(f"./baselines/DCRNN/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    elif model == 'GMAN':
-        with open(f"./baselines/GMAN/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    elif model == 'GWNet':
-        with open(f"./baselines/GWNet/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    elif model == 'MTGNN':
-        with open(f"./baselines/MTGNN/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    elif model == 'STGCN':
-        with open(f"./baselines/STGCN/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    elif model == "STID":
-        with open(f"./baselines/STID/config.json", 'r') as f:
-            model_cfg = json.load(f)
-    else:
-        raise ValueError(f"Model config file for model {model} is not found")
+    with open(f"./baselines/{model}/config.json", 'r') as f:
+        model_cfg = json.load(f)
 
     cfg = types.SimpleNamespace()
     for c in [run_cfg, model_cfg, data_cfg]:
@@ -75,10 +53,10 @@ def get_config():
 def get_auxiliary(args, dataloader):
     ret = {}
     if args.model_name == 'ESG':
+        from baselines.ESG.esg_utils import get_node_fea, get_fc_dim
         node_fea = get_node_fea(args.data, 0.7)
-        node_fea = torch.tensor(node_fea).type(torch.FloatTensor).to(args.device)
-        ret['node_fea'] = node_fea
-        ret['fc_dim'] = (dataloader['train_loader'].size - 8) * 16 * 2
+        ret['node_fea'] = torch.tensor(node_fea).type(torch.FloatTensor).to(args.device)
+        ret['fc_dim'] = get_fc_dim(dataloader['train_loader'].size, args.residual_channels)
     elif args.model_name == 'DCRNN':
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
@@ -151,42 +129,6 @@ def get_model(args):
     return model
 
 
-def get_node_fea(data_set, train_num=0.6):
-    if data_set == 'solar-energy':
-        path = 'data/h5data/solar-energy.h5'
-    elif data_set == 'electricity':
-        path = 'data/h5data/electricity.h5'
-    elif data_set == 'exchange-rate':
-        path = 'data/h5data/exchange-rate.h5'
-    elif data_set == 'wind':
-        path = 'data/h5data/wind.h5'
-    elif data_set == 'nyc-bike':
-        path = 'data/h5data/nyc-bike.h5'
-    elif data_set == 'nyc-taxi':
-        path = 'data/h5data/nyc-taxi.h5'
-    else:
-        raise ('No such dataset........................................')
-
-    if data_set == 'nyc-bike' or data_set== 'nyc-taxi':
-        x = h5py.File(path, 'r')
-        data = np.array(x['raw_data'])
-        data = data.transpose([0, 2, 1])  # (T, C, N)
-        df = data[:int(len(data) * train_num)]
-        scaler = StandardScaler(df.mean(),df.std())
-        train_feas = scaler.transform(df).reshape([-1,df.shape[2]])
-    else:
-        x = pd.read_hdf(path)
-        data = x.values
-        print(x.shape)
-        num_samples = data.shape[0]
-        num_train = round(num_samples * train_num)
-        df = data[:num_train]
-        print(df.shape)
-        scaler = StandardScaler(df.mean(),df.std())
-        train_feas = scaler.transform(df)
-    return train_feas
-
-
 def masked_mae(preds, labels, null_val=np.nan):
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
@@ -212,3 +154,11 @@ class MyEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(MyEncoder, self).default(obj)
+
+
+def set_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)

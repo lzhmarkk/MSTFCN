@@ -3,14 +3,16 @@
     "data": "nyc-bike",
     "device": "cuda:0",
     "expid": "MTGNN-bike",
+
     "epochs": 300,
     "early_stop": true,
     "early_stop_steps": 30,
-    "print_interval": 50,
     "runs": 1,
 
     "window": 12,
     "horizon": 12,
+
+    "seed": 0,
 
     "mask0": false,
     "cl": false,

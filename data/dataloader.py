@@ -103,6 +103,7 @@ class DataLoaderM(object):
         self.num_batch = int(self.size // self.batch_size)
         self.xs = xs
         self.ys = ys
+        self.current_ind = 0
 
     def shuffle(self):
         permutation = np.random.permutation(self.size)
@@ -110,26 +111,23 @@ class DataLoaderM(object):
         self.xs = xs
         self.ys = ys
 
-    def get_iterator(self):
+    def __iter__(self):
         self.current_ind = 0
+        return self
 
-        def _wrapper():
-            while self.current_ind < self.num_batch:
-                start_ind = self.batch_size * self.current_ind
-                end_ind = min(self.size, self.batch_size * (self.current_ind + 1))
-                x_i = self.xs[start_ind: end_ind, ...]
-                y_i = self.ys[start_ind: end_ind, ...]
-                yield (x_i, y_i)
-                self.current_ind += 1
+    def __next__(self):
+        if self.current_ind < self.num_batch:
+            start_ind = self.batch_size * self.current_ind
+            end_ind = min(self.size, self.batch_size * (self.current_ind + 1))
+            x_i = self.xs[start_ind: end_ind, ...]
+            y_i = self.ys[start_ind: end_ind, ...]
+            self.current_ind += 1
+            return x_i, y_i
+        else:
+            raise StopIteration()
 
-        return _wrapper()
-
-    def get_one(self, index):
-        start_ind = self.batch_size * index
-        end_ind = min(self.size, self.batch_size * (index + 1))
-        x_i = self.xs[start_ind: end_ind, ...]
-        y_i = self.ys[start_ind: end_ind, ...]
-        return (x_i, y_i)
+    def __len__(self):
+        return self.num_batch
 
 
 def load_dataset(dataset, batch_size, window, horizon, input_dim, output_dim, valid_batch_size=None, test_batch_size=None, add_time=False):

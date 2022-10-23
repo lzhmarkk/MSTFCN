@@ -1,18 +1,20 @@
 import time
-from tensorboardX import SummaryWriter
 from util import *
+from tqdm import tqdm
 from trainer import Trainer
-import sys,os
 from evaluate import get_scores
+from tensorboardX import SummaryWriter
 from data.dataloader import load_dataset
 
 
 args = get_config()
 torch.set_num_threads(3)
+set_random_seed(args.seed)
+
 
 def main(runid):
     #load data
-    save_folder = os.path.join('./saves',args.data,args.model_name, args.expid, str(runid))
+    save_folder = os.path.join('./saves', args.data, args.model_name, args.expid)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     model_path = os.path.join(save_folder,'best-model.pt')
@@ -46,16 +48,16 @@ def main(runid):
         train_loss = []
         t1 = time.time()
         # dataloader['train_loader'].shuffle()
-        for iter, (x, y) in enumerate(dataloader['train_loader'].get_iterator()):
+        tqdm_loader = tqdm(dataloader['train_loader'], ncols=150)
+        for iter, (x, y) in enumerate(tqdm_loader):
             tx = torch.Tensor(x).to(args.device)  # [B,T,N,C]
             ty = torch.Tensor(y).to(args.device)  # [B,T,N,C]
 
             loss = engine.train(tx, ty[..., :args.output_dim], ty[..., args.output_dim:])
             train_loss.append(loss)
 
-            if iter % args.print_interval == 0 :
-                log = 'Iter: {:03d}, Train Loss: {:.4f}'
-                print(log.format(iter, train_loss[-1]),flush=True)
+            tqdm_loader.set_description('Iter: {:03d}, Train Loss: {:.4f}'.format(iter, train_loss[-1]))
+
         t2 = time.time()
         train_time.append(t2-t1)
         #validation
@@ -63,7 +65,7 @@ def main(runid):
 
 
         s1 = time.time()
-        for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
+        for iter, (x, y) in enumerate(dataloader['val_loader']):
             testx = torch.Tensor(x).to(args.device)
             testy = torch.Tensor(y).to(args.device)
 
@@ -118,7 +120,7 @@ def main(runid):
     realy = torch.Tensor(dataloader['y_val']).to(args.device)
     realy = realy[:,:,:,:args.output_dim] #[B, T, N,C]
 
-    for iter, (x, y) in enumerate(dataloader['val_loader'].get_iterator()):
+    for iter, (x, y) in enumerate(dataloader['val_loader']):
         testx = torch.Tensor(x).to(args.device)
         testy = torch.Tensor(y).to(args.device)
         with torch.no_grad():
@@ -146,7 +148,7 @@ def main(runid):
     realy = torch.Tensor(dataloader['y_test']).to(args.device) #[B, T, N,C]
     realy = realy[:,:,:,:args.output_dim] #[B, T, N,C]
 
-    for iter, (x, y) in enumerate(dataloader['test_loader'].get_iterator()):
+    for iter, (x, y) in enumerate(dataloader['test_loader']):
         testx = torch.Tensor(x).to(args.device)
         testy = torch.Tensor(y).to(args.device)
         with torch.no_grad():
@@ -227,8 +229,3 @@ if __name__ == "__main__":
         print(log.format(i+1, mrmse[i], mmae[i], mcorr[i], srmse[i], smae[i], scorr[i]))
     print('test|All\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
     print(log.format(0, np.mean(armse,0), np.mean(amae,0), np.mean(acorr,0), np.std(armse,0), np.std(amae,0), np.std(acorr,0)))
-
-
-
-
-
