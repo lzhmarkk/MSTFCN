@@ -4,7 +4,7 @@
     "device": "cuda:0",
     "expid": "MTGNN-bike",
 
-    "epochs": 300,
+    "epochs": 1000,
     "early_stop": true,
     "early_stop_steps": 30,
     "runs": 1,

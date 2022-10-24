@@ -49,7 +49,7 @@ class STID(nn.Module):
             nn.init.xavier_uniform_(self.node_emb)
         # temporal embeddings
         if self.if_time_in_day:
-            self.time_in_day_emb = nn.Parameter(torch.empty(288, self.temp_dim_tid))
+            self.time_in_day_emb = nn.Parameter(torch.empty(48, self.temp_dim_tid))
             nn.init.xavier_uniform_(self.time_in_day_emb)
         if self.if_day_in_week:
             self.day_in_week_emb = nn.Parameter(torch.empty(7, self.temp_dim_diw))
@@ -85,7 +85,7 @@ class STID(nn.Module):
 
         if self.if_time_in_day:
             t_i_d_data = history_data[..., -2]  # [B, L, N]
-            time_in_day_emb = self.time_in_day_emb[(t_i_d_data[:, -1, :] * 288).type(torch.LongTensor)]
+            time_in_day_emb = self.time_in_day_emb[(t_i_d_data[:, -1, :] * 48).type(torch.LongTensor)]
         else:
             time_in_day_emb = None
         if self.if_day_in_week:

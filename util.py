@@ -81,10 +81,6 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         adj_mx = np.array(df['adjacency_matrix'])
         ret['adj_mx'] = get_normalized_adj(adj_mx)
-    elif args.model_name == "STID":
-        pass
-    else:
-        raise ValueError(f"Auxiliary data for model {args.model_name} is not found")
     return ret
 
 
@@ -110,6 +106,10 @@ def get_model(args):
                       nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim, num_nodes=args.num_nodes,
                       kernel_size=args.kernel_size, horizon=args.horizon, window=args.window, dropout=args.dropout,
                       blocks=args.blocks, layers=args.layers, gcn_bool=args.gcn_bool, addaptadj=args.addaptadj)
+    elif args.model_name == 'MLPMixer':
+        model = MLPMixer(device=args.device, input_dim=args.input_dim, output_dim=args.output_dim, window=args.window,
+                         horizon=args.horizon, hidden_dim=args.hidden_dim, dropout=args.dropout, num_nodes=args.num_nodes,
+                         use_fft=args.use_fft, fft_dropout=args.fft_dropout)
     elif args.model_name == 'MTGNN':
         model = MTGNN(device=args.device, adj_mx=args.adj_mx, gcn_true=args.gcn_true, buildA_true=args.buildA_true,
                       num_nodes=args.num_nodes, gcn_depth=args.gcn_depth, dropout=args.dropout,

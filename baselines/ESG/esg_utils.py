@@ -136,4 +136,7 @@ def get_node_fea(data_set, train_num=0.7):
 
 
 def get_fc_dim(train_size, channel):
-    return (train_size - 8) * channel
+    dim = (train_size - 8) * channel
+    print(f"train_size {train_size}, fc dim {dim}")
+    # assert dim == 97536
+    return dim

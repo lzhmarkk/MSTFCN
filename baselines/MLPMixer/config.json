@@ -1,0 +1,7 @@
+{
+  "hidden_dim": 8,
+  "dropout": 0.0,
+  "use_fft": false,
+  "fft_dropout": 0.0,
+  "add_time": false
+}
