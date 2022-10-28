@@ -1,8 +1,8 @@
 {
-    "model_name": "MTGNN",
+    "model_name": "CRGNN",
     "data": "nyc-bike",
     "device": "cuda:0",
-    "expid": "MTGNN-bike",
+    "expid": "debug",
 
     "epochs": 1000,
     "early_stop": true,

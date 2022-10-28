@@ -73,7 +73,7 @@ def get_auxiliary(args, dataloader):
     elif args.model_name == 'GWNet':
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
-    elif args.model_name == "MTGNN":
+    elif args.model_name == "MTGNN" or args.model_name == "CRGNN":
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
     elif args.model_name == "STGCN":
@@ -117,6 +117,16 @@ def get_model(args):
                       subgraph_size=args.subgraph_size, node_dim=args.node_dim, tanhalpha=args.tanhalpha, propalpha=args.propalpha,
                       dilation_exponential=args.dilation_exponential, layers=args.layers, residual_channels=args.residual_channels,
                       conv_channels=args.conv_channels, skip_channels=args.skip_channels, end_channels=args.end_channels)
+    elif args.model_name == 'CRGNN':
+        model = CRGNN(device=args.device, adj_mx=args.adj_mx, gcn_true=args.gcn_true, buildA_true=args.buildA_true,
+                        num_nodes=args.num_nodes, gcn_depth=args.gcn_depth, dropout=args.dropout,
+                        input_dim=args.input_dim, output_dim=args.output_dim, window=args.window, horizon=args.horizon,
+                        subgraph_size=args.subgraph_size, node_dim=args.node_dim, tanhalpha=args.tanhalpha,
+                        propalpha=args.propalpha,
+                        dilation_exponential=args.dilation_exponential, layers=args.layers,
+                        residual_channels=args.residual_channels,
+                        conv_channels=args.conv_channels, skip_channels=args.skip_channels,
+                        end_channels=args.end_channels)
     elif args.model_name == "STID":
         model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,
