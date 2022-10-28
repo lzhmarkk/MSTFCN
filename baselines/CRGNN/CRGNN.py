@@ -279,10 +279,16 @@ class CRGNN(nn.Module):
                                     kernel_size=(1, 1),
                                     bias=True)
 
+        # time encoding
+        self.time_day_mlp = nn.Conv2d(self.skip_channels, self.skip_channels, kernel_size=(1, self.seq_length))
+        self.time_week_mlp = nn.Conv2d(self.skip_channels, self.skip_channels, kernel_size=(1, self.seq_length))
+        self.time_day_emb = nn.Parameter(torch.randn(48, self.skip_channels))
+        self.time_week_emb = nn.Parameter(torch.randn(7, self.skip_channels))
+
     def forward(self, input, **kwargs):
-        input = input[..., :self.in_dim]  # (bs, window, num_nodes, in_dim)
+        x = input[..., :self.in_dim]  # (bs, window, num_nodes, in_dim)
         time = input[..., self.in_dim:]  # (bs, window, num_nodes, 2)
-        input = input.transpose(3, 1)  # (bs, in_dim, num_nodes, window)
+        input = x.transpose(3, 1)  # (bs, in_dim, num_nodes, window)
 
         if self.seq_length < self.receptive_field:
             input = nn.functional.pad(input, (self.receptive_field - self.seq_length, 0, 0, 0))
@@ -315,6 +321,14 @@ class CRGNN(nn.Module):
 
         output = self.skipE(x) + output
         x = F.relu(output)
+
+        # time encoding
+        time_in_day_emb = self.time_day_emb[(time[..., -2] * 48).long()].permute(0, 3, 2, 1)
+        day_in_week_emb = self.time_week_emb[(time[..., -1]).long()].permute(0, 3, 2, 1)
+        time_in_day_emb = self.time_day_mlp(time_in_day_emb)
+        day_in_week_emb = self.time_week_mlp(day_in_week_emb)
+        x = torch.cat([x, time_in_day_emb, day_in_week_emb], 1)
+
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
 
