@@ -6,20 +6,41 @@ from evaluate import get_scores
 from tensorboardX import SummaryWriter
 from data.dataloader import load_dataset
 
-
 args = get_config()
 torch.set_num_threads(3)
 set_random_seed(args.seed)
 
 
+def evaluate(args, engine, dataloader):
+    """
+    output: loss(float), scores(dict), pred(ndarray), real(ndarray)
+    """
+    pred, real, loss = [], [], []
+    for _, (x, y) in enumerate(dataloader):
+        x = torch.Tensor(x).to(args.device)  # [B, T, N, C + time], transformed
+        y = torch.Tensor(y).to(args.device)  # [B, T, N, C + time], transformed
+        with torch.no_grad():
+            _loss, _pred, _real = engine.eval(x, real=y[..., :args.output_dim], pred_time=y[..., args.output_dim:])
+        pred.append(_pred)  # [B, T, N, C], inverse_transformed
+        real.append(_real)  # [B, T, N, C], inverse_transformed
+        loss.append(_loss)
+
+    pred = torch.cat(pred, dim=0).cpu().numpy()
+    real = torch.cat(real, dim=0).cpu().numpy()
+    scores = get_scores(pred, real, mask=args.mask0, out_catagory='multi', detail=True)
+
+    return np.mean(loss).item(), scores, pred, real
+
+
 def main(runid):
-    #load data
+    # load data
     save_folder = os.path.join('./saves', args.data, args.model_name, args.expid)
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-    model_path = os.path.join(save_folder,'best-model.pt')
-    sys.stdout = Logger(os.path.join(save_folder,'log.txt'))
-    dataloader = load_dataset(args.data, args.batch_size, args.window, args.horizon, args.input_dim, args.output_dim, add_time=args.add_time)
+    model_path = os.path.join(save_folder, 'best-model.pt')
+    sys.stdout = Logger(os.path.join(save_folder, 'log.txt'))
+    dataloader = load_dataset(args.data, args.batch_size, args.window, args.horizon, args.input_dim,
+                              args.output_dim, add_time=args.add_time)
     setattr(args, 'device', torch.device(args.device))
     setattr(args, 'scaler', dataloader['scaler'])
 
@@ -27,160 +48,101 @@ def main(runid):
     for k, v in auxiliary.items():
         setattr(args, k, v)
     model = get_model(args)
-  
+
     print(args)
     print(model)
     print('Number of model parameters is', sum([p.nelement() for p in model.parameters()]))
-    run_folder = os.path.join(save_folder,'run')
+    run_folder = os.path.join(save_folder, 'run')
     if not os.path.exists(run_folder):
         os.makedirs(run_folder)
     writer = SummaryWriter(run_folder)
 
-    engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size, args.horizon, args.scaler, args.device, args.cl, args.mask0)
+    engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size,
+                     args.horizon, args.scaler, args.device, args.cl, args.mask0)
 
-    print("start training...",flush=True)
-    his_loss =[]
-    val_time = []
-    train_time = []
-    minl = 1e5
-    best_epoch = 1e5
-    for i in range(args.epochs):
+    # train model
+    print("start training...", flush=True)
+    his_loss = []
+    train_time, valid_time = [], []
+    min_valid_loss = best_epoch = 1e5
+    for i in range(0):
         train_loss = []
-        t1 = time.time()
+        t = time.time()
         # dataloader['train_loader'].shuffle()
         tqdm_loader = tqdm(dataloader['train_loader'], ncols=150)
         for iter, (x, y) in enumerate(tqdm_loader):
-            tx = torch.Tensor(x).to(args.device)  # [B,T,N,C]
-            ty = torch.Tensor(y).to(args.device)  # [B,T,N,C]
-
-            loss = engine.train(tx, ty[..., :args.output_dim], ty[..., args.output_dim:])
+            x = torch.Tensor(x).to(args.device)  # [B, T, N, C + time], inverse_transformed
+            y = torch.Tensor(y).to(args.device)  # [B, T, N, C + time], inverse_transformed
+            loss = engine.train(x, real=y[..., :args.output_dim], pred_time=y[..., args.output_dim:])
             train_loss.append(loss)
 
             tqdm_loader.set_description('Iter: {:03d}, Train Loss: {:.4f}'.format(iter, train_loss[-1]))
 
-        t2 = time.time()
-        train_time.append(t2-t1)
-        #validation
-        valid_loss = []
+        train_time.append(time.time() - t)
+        train_loss = np.mean(train_loss).item()
 
+        # validation
+        t = time.time()
+        valid_loss, scores, _, _ = evaluate(args, engine, dataloader['val_loader'])
 
-        s1 = time.time()
-        for iter, (x, y) in enumerate(dataloader['val_loader']):
-            testx = torch.Tensor(x).to(args.device)
-            testy = torch.Tensor(y).to(args.device)
+        print('Epoch: {:03d}, Inference Time: {:.4f} secs'.format(i, (time.time() - t)))
+        valid_time.append(time.time() - t)
+        his_loss.append(valid_loss)
 
-            vloss = engine.eval(testx, testy[..., :args.output_dim], testy[..., args.output_dim:])
-            valid_loss.append(vloss)
+        print('Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, '
+              'Training Time: {:.2f}s/epoch, Inference Time: {:.2f}s/epoch'.
+              format(i, train_loss, valid_loss, train_time[-1], valid_time[-1]), flush=True)
+        writer.add_scalars('loss', {'train': train_loss}, global_step=i)
+        writer.add_scalars('loss', {'valid': valid_loss}, global_step=i)
 
-        s2 = time.time()
-        log = 'Epoch: {:03d}, Inference Time: {:.4f} secs'
-        print(log.format(i,(s2-s1)))
-        val_time.append(s2-s1)
-        mtrain_loss = np.mean(train_loss)
-
-        mvalid_loss = np.mean(valid_loss)
-        his_loss.append(mvalid_loss)
-
-
-        log = 'Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, Training Time: {:.4f}/epoch'
-        print(log.format(i, mtrain_loss, mvalid_loss, (t2 - t1)),flush=True)
-        writer.add_scalars('loss', {'train':mtrain_loss}, global_step=i )
-        writer.add_scalars('loss', {'valid':mvalid_loss}, global_step=i )
-
-
-        if mvalid_loss<minl:
+        if valid_loss < min_valid_loss:
             with open(model_path, 'wb') as f:
                 torch.save(engine.model, f)
-            #torch.save(engine.model.state_dict(), os.path.join(save_folder,"exp.pth"))
-            minl = mvalid_loss
+            min_valid_loss = valid_loss
             best_epoch = i
             print(f'save best epoch {best_epoch} *****************')
-        elif args.early_stop and  i - best_epoch > args.early_stop_steps:
+        elif args.early_stop and i - best_epoch > args.early_stop_steps:
             print('best epoch:', best_epoch)
             break
 
     print("Average Training Time: {:.4f} secs/epoch".format(np.mean(train_time)))
-    print("Average Inference Time: {:.4f} secs".format(np.mean(val_time)))
+    print("Average Inference Time: {:.4f} secs".format(np.mean(valid_time)))
 
-
-    bestid = np.argmin(his_loss)
-
-    # engine.model.load_state_dict(torch.load(os.path.join(save_folder,"exp.pth")))
-
-    # Load the best saved model.
+    # Load the best saved model
     with open(model_path, 'rb') as f:
         engine.model = torch.load(f)
-
+    best_epoch = np.argmin(his_loss)
     print("Training finished")
-    print('Best epoch:', bestid)
-    print("The valid loss on best model is", str(round(his_loss[bestid],4)))
+    print('Best epoch:', best_epoch)
+    print("The valid loss on best model is", str(his_loss[best_epoch]))
 
-    #valid data
-    outputs = []
-    realy = torch.Tensor(dataloader['y_val']).to(args.device)
-    realy = realy[:,:,:,:args.output_dim] #[B, T, N,C]
-
-    for iter, (x, y) in enumerate(dataloader['val_loader']):
-        testx = torch.Tensor(x).to(args.device)
-        testy = torch.Tensor(y).to(args.device)
-        with torch.no_grad():
-            preds = engine.model(testx, pred_time=testy[..., args.output_dim:])  # [B,T,N,C]
-        outputs.append(preds) # [B,T,N,C]
-
-    yhat = torch.cat(outputs,dim=0)
-    yhat = yhat[:realy.size(0),...]
-
-
-
-    # mask = 1
-    # if args.data == 'nyc-bike' or args.data == 'nyc-taxi':
-    #     mask = 0
-    preds = args.scaler.inverse_transform(yhat).cpu().numpy()
-    targets = args.scaler.inverse_transform(realy).cpu().numpy()
-    valid_scores = get_scores(preds, targets, mask = args.mask0, out_catagory='multi')
+    # valid model
+    _, valid_scores, _, _ = evaluate(args, engine, dataloader['val_loader'])
     vrmse = valid_scores['RMSE']['all']
     vmae = valid_scores['MAE']['all']
     vcorr = valid_scores['CORR']['all']
 
-
-    #test data
-    outputs = []
-    realy = torch.Tensor(dataloader['y_test']).to(args.device) #[B, T, N,C]
-    realy = realy[:,:,:,:args.output_dim] #[B, T, N,C]
-
-    for iter, (x, y) in enumerate(dataloader['test_loader']):
-        testx = torch.Tensor(x).to(args.device)
-        testy = torch.Tensor(y).to(args.device)
-        with torch.no_grad():
-            preds = engine.model(testx, pred_time=testy[..., args.output_dim:])  #[B,T,N,C]
-        outputs.append(preds)#[B,T,N,C]
-
-    yhat = torch.cat(outputs, dim=0)
-    yhat = yhat[:realy.size(0), ...]
-    save_predicitions = args.scaler.inverse_transform(yhat).cpu().numpy()
-    save_targets = args.scaler.inverse_transform(realy).cpu().numpy()
-    test_scores = get_scores(save_predicitions, save_targets, mask = args.mask0, out_catagory='multi', detail = True)
-    rmse = []
-    mae = []
-    corr = []    
+    # test model
+    _, test_scores, pred, tgt = evaluate(args, engine, dataloader['test_loader'])
+    rmse, mae, corr = [], [], []
     for i in range(args.horizon):
         rmse.append(test_scores['RMSE'][f'horizon-{i}'])
         mae.append(test_scores['MAE'][f'horizon-{i}'])
         corr.append(test_scores['CORR'][f'horizon-{i}'])
-    armse = test_scores['RMSE']['all']    
+    armse = test_scores['RMSE']['all']
     amae = test_scores['MAE']['all']
     acorr = test_scores['CORR']['all']
-    
+
     print('test results:')
     print(json.dumps(test_scores, cls=MyEncoder, indent=4))
     with open(os.path.join(save_folder, 'test-scores.json'), 'w+') as f:
         json.dump(test_scores, f, cls=MyEncoder, indent=4)
-    np.savez(os.path.join(save_folder, 'test-results.npz'), predictions=save_predicitions, targets=save_targets)
+    np.savez(os.path.join(save_folder, 'test-results.npz'), predictions=pred, targets=tgt)
     return vrmse, vmae, vcorr, rmse, mae, corr, armse, amae, acorr
 
 
 if __name__ == "__main__":
-    vrmse= []
+    vrmse = []
     vmae = []
     vcorr = []
     rmse = []
@@ -204,28 +166,26 @@ if __name__ == "__main__":
     rmse = np.array(rmse)
     mae = np.array(mae)
     corr = np.array(corr)
-    
-    mrmse = np.mean(rmse,0)
-    mmae = np.mean(mae,0)
-    mcorr = np.mean(corr,0)  
 
-    srmse = np.std(rmse,0)
-    smae = np.std(mae,0)
-    scorr = np.std(corr,0)
-    
+    mrmse = np.mean(rmse, 0)
+    mmae = np.mean(mae, 0)
+    mcorr = np.mean(corr, 0)
+
+    srmse = np.std(rmse, 0)
+    smae = np.std(mae, 0)
+    scorr = np.std(corr, 0)
 
     print(f'\n\nResults for {args.runs} runs\n\n')
-    #valid data
+    # valid data
     print('valid\tRMSE\tMAE\tCORR')
-    log = 'mean:\t{:.4f}\t{:.4f}\t{:.4f}'
-    print(log.format(np.mean(vrmse),np.mean(vmae),np.mean(vcorr)))
-    log = 'std:\t{:.4f}\t{:.4f}\t{:.4f}'
-    print(log.format(np.std(vrmse),np.std(vmae),np.std(vcorr)))
+    print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vrmse), np.mean(vmae), np.mean(vcorr)))
+    print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vrmse), np.std(vmae), np.std(vcorr)))
     print('\n\n')
-    #test data
+    # test data
     print('test|horizon\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
-    for i in [2,5,11]:
-        log = '{:d}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
-        print(log.format(i+1, mrmse[i], mmae[i], mcorr[i], srmse[i], smae[i], scorr[i]))
-    print('test|All\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
-    print(log.format(0, np.mean(armse,0), np.mean(amae,0), np.mean(acorr,0), np.std(armse,0), np.std(amae,0), np.std(acorr,0)))
+    for i in [2, 5, 11]:
+        print('{:d}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
+              .format(i + 1, mrmse[i], mmae[i], mcorr[i], srmse[i], smae[i], scorr[i]))
+    print('test|All\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std'
+          .format(0, np.mean(armse, 0), np.mean(amae, 0), np.mean(acorr, 0), np.std(armse, 0), np.std(amae, 0),
+                  np.std(acorr, 0)))

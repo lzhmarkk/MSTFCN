@@ -67,7 +67,8 @@ class Trainer():
         else:
             loss = self.loss(predict, real)
         #     rmse = util.masked_rmse(predict,real).item()
-        return loss.item() 
+        # return loss.item()
+        return loss.item(), predict, real
 
 
 class Optim(object):

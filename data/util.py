@@ -4,10 +4,6 @@ import numpy as np
 import pandas as pd
 
 
-def normal_std(x):
-    return x.std() * np.sqrt((len(x) - 1.) / (len(x)))
-
-
 class StandardScaler:
     def __init__(self, mean, std):
         self.mean = mean
