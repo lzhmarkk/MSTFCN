@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.nn import init
 import numbers
 import torch.nn.functional as F
-from data.dataloader import StandardScaler
+from data.util import StandardScaler
 
 
 class Dilated_Inception(nn.Module):
@@ -120,7 +120,7 @@ def get_node_fea(data_set, train_num=0.7):
         data = np.array(x['raw_data'])
         data = data.transpose([0, 2, 1])  # (T, C, N)
         df = data[:int(len(data) * train_num)]
-        scaler = StandardScaler(df.mean(), df.std())
+        scaler = StandardScaler(df)
         train_feas = scaler.transform(df).reshape([-1, df.shape[2]])
     else:
         x = pd.read_hdf(path)
@@ -130,7 +130,7 @@ def get_node_fea(data_set, train_num=0.7):
         num_train = round(num_samples * train_num)
         df = data[:num_train]
         print(df.shape)
-        scaler = StandardScaler(df.mean(), df.std())
+        scaler = StandardScaler(df)
         train_feas = scaler.transform(df)
     return train_feas
 

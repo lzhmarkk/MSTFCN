@@ -4,7 +4,7 @@ from tqdm import tqdm
 from trainer import Trainer
 from evaluate import get_scores
 from tensorboardX import SummaryWriter
-from data.load_dataset import load_dataset
+from data.load_dataset import load_dataset_mix
 
 args = get_config()
 torch.set_num_threads(3)
@@ -13,21 +13,27 @@ set_random_seed(args.seed)
 
 def evaluate(args, engine, dataloader):
     """
-    output: loss(float), scores(dict), pred(ndarray), real(ndarray)
+    output: loss(float), scores(list[dict]), pred(ndarray), real(ndarray)
     """
     pred, real, loss = [], [], []
     for _, (x, y) in enumerate(dataloader):
         x = torch.Tensor(x).to(args.device)  # [B, T, N, C + time], transformed
         y = torch.Tensor(y).to(args.device)  # [B, T, N, C + time], transformed
         with torch.no_grad():
-            _loss, _pred, _real = engine.eval(x, real=y[..., :args.output_dim], pred_time=y[..., args.output_dim:])
+            _loss, _pred, _real = engine.eval(x, real=y[..., :sum(args.output_dim)],
+                                              pred_time=y[..., sum(args.output_dim):])
         pred.append(_pred)  # [B, T, N, C], inverse_transformed
         real.append(_real)  # [B, T, N, C], inverse_transformed
         loss.append(_loss)
 
     pred = torch.cat(pred, dim=0).cpu().numpy()
     real = torch.cat(real, dim=0).cpu().numpy()
-    scores = get_scores(pred, real, mask=args.mask0, out_catagory='multi', detail=True)
+    scores = []
+    idx = 0
+    for dim in args.output_dim:
+        scores.append(get_scores(pred[..., idx: idx + dim], real[..., idx: idx + dim],
+                                 mask=args.mask0, out_catagory='multi', detail=True))
+        idx += dim
 
     return np.mean(loss).item(), scores, pred, real
 
@@ -39,8 +45,8 @@ def main(runid):
         os.makedirs(save_folder)
     model_path = os.path.join(save_folder, 'best-model.pt')
     sys.stdout = Logger(os.path.join(save_folder, 'log.txt'))
-    dataloader = load_dataset(args.data, args.batch_size, args.window, args.horizon, args.input_dim,
-                              args.output_dim, add_time=args.add_time)
+    dataloader = load_dataset_mix(args.data, args.batch_size, args.window, args.horizon, args.input_dim,
+                                  args.output_dim, add_time=args.add_time)
     setattr(args, 'device', torch.device(args.device))
     setattr(args, 'scaler', dataloader['scaler'])
 
@@ -73,7 +79,7 @@ def main(runid):
         for iter, (x, y) in enumerate(tqdm_loader):
             x = torch.Tensor(x).to(args.device)  # [B, T, N, C + time], inverse_transformed
             y = torch.Tensor(y).to(args.device)  # [B, T, N, C + time], inverse_transformed
-            loss = engine.train(x, real=y[..., :args.output_dim], pred_time=y[..., args.output_dim:])
+            loss = engine.train(x, real=y[..., :sum(args.output_dim)], pred_time=y[..., sum(args.output_dim):])
             train_loss.append(loss)
 
             tqdm_loader.set_description('Iter: {:03d}, Train Loss: {:.4f}'.format(iter, train_loss[-1]))
@@ -83,7 +89,7 @@ def main(runid):
 
         # validation
         t = time.time()
-        valid_loss, scores, _, _ = evaluate(args, engine, dataloader['val_loader'])
+        valid_loss, _, _, _ = evaluate(args, engine, dataloader['val_loader'])
 
         print('Epoch: {:03d}, Inference Time: {:.4f} secs'.format(i, (time.time() - t)))
         valid_time.append(time.time() - t)
@@ -118,20 +124,25 @@ def main(runid):
 
     # valid model
     _, valid_scores, _, _ = evaluate(args, engine, dataloader['val_loader'])
-    vrmse = valid_scores['RMSE']['all']
-    vmae = valid_scores['MAE']['all']
-    vcorr = valid_scores['CORR']['all']
+    vrmse = [valid_score['RMSE']['all'] for valid_score in valid_scores]
+    vmae = [valid_score['MAE']['all'] for valid_score in valid_scores]
+    vcorr = [valid_score['CORR']['all'] for valid_score in valid_scores]
 
     # test model
     _, test_scores, pred, tgt = evaluate(args, engine, dataloader['test_loader'])
     rmse, mae, corr = [], [], []
-    for i in range(args.horizon):
-        rmse.append(test_scores['RMSE'][f'horizon-{i}'])
-        mae.append(test_scores['MAE'][f'horizon-{i}'])
-        corr.append(test_scores['CORR'][f'horizon-{i}'])
-    armse = test_scores['RMSE']['all']
-    amae = test_scores['MAE']['all']
-    acorr = test_scores['CORR']['all']
+    for test_score in test_scores:
+        _rmse, _mae, _corr = [], [], []
+        for i in range(args.horizon):
+            _rmse.append(test_score['RMSE'][f'horizon-{i}'])
+            _mae.append(test_score['MAE'][f'horizon-{i}'])
+            _corr.append(test_score['CORR'][f'horizon-{i}'])
+        rmse.append(_rmse)
+        mae.append(_mae)
+        corr.append(_corr)
+    armse = [test_score['RMSE']['all'] for test_score in test_scores]
+    amae = [test_score['MAE']['all'] for test_score in test_scores]
+    acorr = [test_score['CORR']['all'] for test_score in test_scores]
 
     print('test results:')
     print(json.dumps(test_scores, cls=MyEncoder, indent=4))
@@ -163,29 +174,37 @@ if __name__ == "__main__":
         amae.append(a2)
         acorr.append(a3)
 
+    vrmse = np.array(vrmse)
+    vmae = np.array(vmae)
+    vcorr = np.array(vcorr)
     rmse = np.array(rmse)
     mae = np.array(mae)
     corr = np.array(corr)
+    armse = np.array(armse)
+    amae = np.array(amae)
+    acorr = np.array(acorr)
 
     mrmse = np.mean(rmse, 0)
     mmae = np.mean(mae, 0)
     mcorr = np.mean(corr, 0)
-
     srmse = np.std(rmse, 0)
     smae = np.std(mae, 0)
     scorr = np.std(corr, 0)
 
     print(f'\n\nResults for {args.runs} runs\n\n')
     # valid data
-    print('valid\tRMSE\tMAE\tCORR')
-    print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vrmse), np.mean(vmae), np.mean(vcorr)))
-    print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vrmse), np.std(vmae), np.std(vcorr)))
-    print('\n\n')
-    # test data
-    print('test|horizon\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
-    for i in [2, 5, 11]:
-        print('{:d}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
-              .format(i + 1, mrmse[i], mmae[i], mcorr[i], srmse[i], smae[i], scorr[i]))
-    print('test|All\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std'
-          .format(0, np.mean(armse, 0), np.mean(amae, 0), np.mean(acorr, 0), np.std(armse, 0), np.std(amae, 0),
-                  np.std(acorr, 0)))
+    for j in range(len(args.input_dim)):
+        print('valid\tRMSE\tMAE\tCORR')
+        print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vrmse[:, j]), np.mean(vmae[:, j]), np.mean(vcorr[:, j])))
+        print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vrmse[:, j]), np.std(vmae[:, j]), np.std(vcorr[:, j])))
+        print('\n\n')
+        # test data
+        print('test|horizon\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\t\tcorr-std')
+        for i in [2, 5, 11]:
+            print('{:d}\t\t\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}'
+                  .format(i + 1, mrmse[j, i], mmae[j, i], mcorr[j, i], srmse[j, i], smae[j, i], scorr[j, i]))
+        print('test|All\t\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
+        print('{:d}\t\t\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}'
+              .format(0, np.mean(armse[:, j], 0), np.mean(amae[:, j], 0), np.mean(acorr[:, j], 0),
+                      np.std(armse[:, j], 0), np.std(amae[:, j], 0), np.std(acorr[:, j], 0)))
+        print("-" * 30)

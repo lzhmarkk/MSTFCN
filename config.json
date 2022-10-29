@@ -1,6 +1,6 @@
 {
     "model_name": "CRGNN",
-    "data": "nyc-bike",
+    "data": "nyc-mix",
     "device": "cuda:0",
     "expid": "debug",
 

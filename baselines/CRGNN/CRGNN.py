@@ -337,3 +337,40 @@ class CRGNN(nn.Module):
         x = x.squeeze(dim=-1)
         x = x.permute(0, 1, 3, 2)
         return x
+
+
+class CRGNNMix(nn.Module):
+    def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
+                 window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
+                 layers, residual_channels, conv_channels, skip_channels, end_channels):
+        super(CRGNNMix, self).__init__()
+
+        self.n_mix = len(input_dim)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        models = []
+        for i in range(self.n_mix):
+            models.append(CRGNN(device=device, adj_mx=adj_mx, gcn_true=gcn_true, buildA_true=buildA_true,
+                          num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
+                          input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
+                          subgraph_size=subgraph_size, node_dim=node_dim, tanhalpha=tanhalpha,
+                          propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
+                          residual_channels=residual_channels, conv_channels=conv_channels, skip_channels=skip_channels,
+                          end_channels=end_channels))
+        self.models = nn.ModuleList(models)
+
+    def forward(self, input, **kwargs):
+        idx = 0
+        preds = []
+        for i in range(self.n_mix):
+            in_dim = self.input_dim[i]
+            out_dim = self.output_dim[i]
+            x = input[..., idx: idx + in_dim]
+            time = input[..., -2:]
+            x = torch.cat([x, time], -1)
+            pred = self.models[i](x)
+            if i == 1:
+                pred = torch.zeros_like(pred)
+            preds.append(pred)
+        return torch.cat(preds, -1)

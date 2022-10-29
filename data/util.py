@@ -5,15 +5,31 @@ import pandas as pd
 
 
 class StandardScaler:
-    def __init__(self, mean, std):
-        self.mean = mean
-        self.std = std
+    def __init__(self, data, dim=None):
+        if isinstance(dim, int):
+            self.split_idx = [(0, dim)]
+        elif isinstance(dim, list):
+            split_idx = []
+            idx = 0
+            for d in dim:
+                split_idx.append((idx, idx + d))
+                idx += d
+            self.split_idx = split_idx
+        else:
+            raise ValueError()
+
+        self.means = [data[..., i: j].mean() for (i, j) in self.split_idx]
+        self.stds = [data[..., i: j].std() for (i, j) in self.split_idx]
 
     def transform(self, data):
-        return (data - self.mean) / self.std
+        for (i, j), mean, std in zip(self.split_idx, self.means, self.stds):
+            data[..., i: j] = (data[..., i: j] - mean) / std
+        return data
 
     def inverse_transform(self, data):
-        return (data * self.std) + self.mean
+        for (i, j), mean, std in zip(self.split_idx, self.means, self.stds):
+            data[..., i: j] = data[..., i: j] * std + mean
+        return data
 
 
 def generate_graph_seq2seq_io_data(
