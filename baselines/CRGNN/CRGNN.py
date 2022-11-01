@@ -6,32 +6,16 @@ import numbers
 import torch.nn.functional as F
 
 
-class linear(nn.Module):
-    def __init__(self, c_in, c_out, bias=True):
-        super(linear, self).__init__()
-        self.mlp = torch.nn.Conv2d(c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=bias)
-
-    def forward(self, x):
-        return self.mlp(x)
-
-
-class nconv(nn.Module):
-    def __init__(self):
-        super(nconv, self).__init__()
-
-    def forward(self, x, A):
-        x = torch.einsum('ncwl,vw->ncvl', (x, A))
-        return x.contiguous()
-
-
-class mixprop(nn.Module):
+class GCN(nn.Module):
     def __init__(self, c_in, c_out, gdep, dropout, alpha):
-        super(mixprop, self).__init__()
-        self.nconv = nconv()
-        self.mlp = linear((gdep + 1) * c_in, c_out)
+        super(GCN, self).__init__()
+        self.mlp = torch.nn.Conv2d((gdep + 1) * c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=True)
         self.gdep = gdep
         self.dropout = dropout
         self.alpha = alpha
+
+    def nconv(self, x, A):
+        return torch.einsum('ncwl,vw->ncvl', (x, A)).contiguous()
 
     def forward(self, x, adj):
         adj = adj + torch.eye(adj.size(0)).to(x.device)
@@ -240,10 +224,10 @@ class CRGNN(nn.Module):
                                                  kernel_size=(1, self.receptive_field - rf_size_j + 1)))
 
             if self.gcn_true:
-                self.gconv1.append(mixprop(self.conv_channels, self.residual_channels, self.gcn_depth, self.dropout,
-                                           self.propalpha))
-                self.gconv2.append(mixprop(self.conv_channels, self.residual_channels, self.gcn_depth, self.dropout,
-                                           self.propalpha))
+                self.gconv1.append(GCN(self.conv_channels, self.residual_channels, self.gcn_depth, self.dropout,
+                                       self.propalpha))
+                self.gconv2.append(GCN(self.conv_channels, self.residual_channels, self.gcn_depth, self.dropout,
+                                       self.propalpha))
 
             if self.seq_length > self.receptive_field:
                 self.norm.append(
@@ -262,7 +246,6 @@ class CRGNN(nn.Module):
                                    kernel_size=(1, self.seq_length), bias=True)
             self.skipE = nn.Conv2d(in_channels=self.residual_channels, out_channels=self.skip_channels,
                                    kernel_size=(1, self.seq_length - self.receptive_field + 1), bias=True)
-
         else:
             self.skip0 = nn.Conv2d(in_channels=self.in_dim, out_channels=self.skip_channels,
                                    kernel_size=(1, self.receptive_field), bias=True)
@@ -270,51 +253,36 @@ class CRGNN(nn.Module):
                                    kernel_size=(1, 1), bias=True)
 
         # final output
-        self.end_conv_1 = nn.Conv2d(in_channels=3 * self.skip_channels,
-                                    out_channels=self.end_channels,
-                                    kernel_size=(1, 1),
-                                    bias=True)
-        self.end_conv_2 = nn.Conv2d(in_channels=self.end_channels,
-                                    out_channels=self.horizon * self.output_dim,
-                                    kernel_size=(1, 1),
-                                    bias=True)
-
-        # time encoding
-        self.time_day_mlp = nn.Conv2d(self.skip_channels, self.skip_channels, kernel_size=(1, self.seq_length))
-        self.time_week_mlp = nn.Conv2d(self.skip_channels, self.skip_channels, kernel_size=(1, self.seq_length))
-        self.time_day_emb = nn.Parameter(torch.randn(48, self.skip_channels))
-        self.time_week_emb = nn.Parameter(torch.randn(7, self.skip_channels))
+        self.end_conv = nn.Sequential(nn.Conv2d(in_channels=3 * self.skip_channels,
+                                                out_channels=self.end_channels,
+                                                kernel_size=(1, 1),
+                                                bias=True),
+                                      nn.ReLU(),
+                                      nn.Conv2d(in_channels=self.end_channels,
+                                                out_channels=self.horizon * self.output_dim,
+                                                kernel_size=(1, 1),
+                                                bias=True))
 
     def forward(self, input, **kwargs):
         x = input[..., :self.in_dim]  # (bs, window, num_nodes, in_dim)
         time = input[..., self.in_dim:]  # (bs, window, num_nodes, 2)
         input = x.transpose(3, 1)  # (bs, in_dim, num_nodes, window)
 
-        if self.seq_length < self.receptive_field:
-            input = nn.functional.pad(input, (self.receptive_field - self.seq_length, 0, 0, 0))
+        input = self.pad_sequence(input)
 
-        if self.gcn_true:
-            if self.buildA_true:
-                g = self.gc(self.idx)
-            else:
-                g = self.predefined_A
+        g = self.build_graph(x)
 
         x = self.start_conv(input)  # (bs, res_channel, n_nodes, recep_field)
         output = self.skip0(F.dropout(input, self.dropout, training=self.training))  # (bs, skp_channel, n_nodes, 1)
 
         for i in range(self.layers):
             residual = x
-            filter = torch.tanh(self.filter_convs[i](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
-            gate = torch.sigmoid(self.gate_convs[i](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
-            x = filter * gate
-            x = F.dropout(x, self.dropout, training=self.training)  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+            x = self.temporal_conv(x, i)
 
             _out = self.skip_convs[i](x)  # (bs, skp_channel, n_nodes, 1)
             output = _out + output
-            if self.gcn_true:
-                x = self.gconv1[i](x, g) + self.gconv2[i](x, g.transpose(1, 0))
-            else:
-                x = self.residual_convs[i](x)
+
+            x = self.spatial_conv(x, g, i)
 
             x = x + residual[:, :, :, -x.size(3):]  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
             x = self.norm[i](x, self.idx)
@@ -323,54 +291,38 @@ class CRGNN(nn.Module):
         x = F.relu(output)
 
         # time encoding
-        time_in_day_emb = self.time_day_emb[(time[..., -2] * 48).long()].permute(0, 3, 2, 1)
-        day_in_week_emb = self.time_week_emb[(time[..., -1]).long()].permute(0, 3, 2, 1)
-        time_in_day_emb = self.time_day_mlp(time_in_day_emb)
-        day_in_week_emb = self.time_week_mlp(day_in_week_emb)
-        x = torch.cat([x, time_in_day_emb, day_in_week_emb], 1)
-
-        x = F.relu(self.end_conv_1(x))
-        x = self.end_conv_2(x)
+        x = self.time_encoding(x, time)
+        x = self.end_conv(x)
 
         batch, size1, num_nodes, size3 = x.shape  # size3 = 1, size1 = horizon * out_dim
-        x = x.reshape(batch, self.horizon, self.output_dim, num_nodes, size3)
-        x = x.squeeze(dim=-1)
+        x = x.reshape(batch, self.horizon, self.output_dim, num_nodes, size3).squeeze(dim=-1)
         x = x.permute(0, 1, 3, 2)
         return x
 
+    def pad_sequence(self, x):
+        if self.seq_length < self.receptive_field:
+            return F.pad(x, (self.receptive_field - self.seq_length, 0, 0, 0))
+        else:
+            return x
 
-class CRGNNMix(nn.Module):
-    def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
-                 window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels):
-        super(CRGNNMix, self).__init__()
+    def build_graph(self, x):
+        if self.gcn_true:
+            if self.buildA_true:
+                g = self.gc(self.idx)
+            else:
+                g = self.predefined_A
+            return g
 
-        self.n_mix = len(input_dim)
-        self.input_dim = input_dim
-        self.output_dim = output_dim
+    def temporal_conv(self, x, layer):
+        filter = torch.tanh(self.filter_convs[layer](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+        gate = torch.sigmoid(self.gate_convs[layer](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+        x = filter * gate
+        x = F.dropout(x, self.dropout, training=self.training)  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+        return x
 
-        models = []
-        for i in range(self.n_mix):
-            models.append(CRGNN(device=device, adj_mx=adj_mx, gcn_true=gcn_true, buildA_true=buildA_true,
-                          num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
-                          input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
-                          subgraph_size=subgraph_size, node_dim=node_dim, tanhalpha=tanhalpha,
-                          propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
-                          residual_channels=residual_channels, conv_channels=conv_channels, skip_channels=skip_channels,
-                          end_channels=end_channels))
-        self.models = nn.ModuleList(models)
-
-    def forward(self, input, **kwargs):
-        idx = 0
-        preds = []
-        for i in range(self.n_mix):
-            in_dim = self.input_dim[i]
-            out_dim = self.output_dim[i]
-            x = input[..., idx: idx + in_dim]
-            time = input[..., -2:]
-            x = torch.cat([x, time], -1)
-            pred = self.models[i](x)
-            if i == 1:
-                pred = torch.zeros_like(pred)
-            preds.append(pred)
-        return torch.cat(preds, -1)
+    def spatial_conv(self, x, g, layer):
+        if self.gcn_true:
+            x = self.gconv1[layer](x, g) + self.gconv2[layer](x, g.transpose(1, 0))
+        else:
+            x = x
+        return x

@@ -4,7 +4,7 @@ from .GMAN.GMAN import GMAN
 from .GWNet.GWNet import GWNet
 from .MLPMixer.MLPMixer import MLPMixer
 from .MTGNN.MTGNN import MTGNN
-from .CRGNN.CRGNN import CRGNNMix as CRGNN
+from .CRGNN.CRGNNMix import CRGNNMix as CRGNN
 from .STGCN.STGCN import STGCN
 from .STID.STID import STID
 
