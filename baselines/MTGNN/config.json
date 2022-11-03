@@ -13,5 +13,5 @@
   "layers": 3,
   "propalpha": 0.05,
   "tanhalpha": 3,
-  "add_time": false
+  "add_time": true
 }

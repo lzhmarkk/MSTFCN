@@ -159,7 +159,7 @@ class dilated_inception(nn.Module):
 class MTGNN(nn.Module):
     def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, add_time):
         super(MTGNN, self).__init__()
         self.device = device
         self.gcn_true = gcn_true
@@ -252,7 +252,7 @@ class MTGNN(nn.Module):
 
                 new_dilation *= self.dilation_exponential
 
-        self.end_conv_1 = nn.Conv2d(in_channels=self.skip_channels,
+        self.end_conv_1 = nn.Conv2d(in_channels=self.skip_channels * (3 if add_time else 1),
                                     out_channels=self.end_channels,
                                     kernel_size=(1, 1),
                                     bias=True)
@@ -274,7 +274,14 @@ class MTGNN(nn.Module):
 
         self.idx = torch.arange(self.num_nodes).to(self.device)
 
+        self.add_time = add_time
+        if add_time:
+            from baselines.CRGNN.CRGNNMix import TimeEncoder
+            self.t_enc = TimeEncoder(self.skip_channels, self.seq_length)
+
     def forward(self, input, **kwargs):
+        if self.add_time:
+            input, time = input[..., :-2], input[..., -2:]
         input = input.transpose(3, 1)  # (bs, input_dim, num_nodes, window)
         seq_len = input.size(3)
         assert seq_len == self.seq_length, 'input sequence length not equal to preset sequence length'  # [32, 2, 250, 12]
@@ -319,6 +326,8 @@ class MTGNN(nn.Module):
 
         skip = self.skipE(x) + skip
         x = F.relu(skip)
+        if self.add_time:
+            x = self.t_enc(x, time)
         x = F.relu(self.end_conv_1(x))
         x = self.end_conv_2(x)
 
