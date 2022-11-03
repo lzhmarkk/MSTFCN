@@ -6,35 +6,55 @@ from .CRGNN import CRGNN
 
 
 class CrossRelationGraphConstructor(nn.Module):
-    def __init__(self, nnodes, k, dim, device, alpha=3):
+    def __init__(self, n_mix, nnodes, k, dim, device, alpha=3, cross_relation=True, full_graph=False):
         super(CrossRelationGraphConstructor, self).__init__()
+        self.n_mix = n_mix
         self.n_nodes = nnodes
         self.k = k
         self.dim = dim
         self.device = device
         self.alpha = alpha
+        self.cross = cross_relation
+        self.full_graph = full_graph
 
-        self.lin1 = nn.Linear(dim, dim)
-        self.lin2 = nn.Linear(dim, dim)
+        # use different mix emb
+        self.emb1 = nn.ModuleList([nn.Embedding(self.n_nodes, self.dim)] * self.n_mix)
+        # use mlp to identify mix emb
+        self.emb2 = nn.Embedding(self.n_nodes, self.dim)
+        self.emb2_mlp = nn.ModuleList([nn.Sequential(nn.Linear(dim, dim, bias=True)), nn.ReLU()] * self.n_mix)
 
-    def forward(self, embs):
+        self.lin1 = nn.Linear(dim, dim, bias=False)
+        self.lin2 = nn.Linear(dim, dim, bias=False)
+
+    def forward(self):
         adjs = []
-        for nodevec1 in embs:
+        for i, nodevec1 in enumerate(self.emb1):
             adjs_row = []
-            for nodevec2 in embs:
-                nodevec1 = torch.tanh(self.alpha * self.lin1(nodevec1))
-                nodevec2 = torch.tanh(self.alpha * self.lin2(nodevec2))
+            # nodevec1 = nodevec1(self.emb2.weight)
+            nodevec1 = nodevec1.weight
+            for j, nodevec2 in enumerate(self.emb1):
+                # nodevec2 = nodevec2(self.emb2.weight)
+                nodevec2 = nodevec2.weight
+                if not self.cross and i != j:
+                    adj = torch.zeros(self.n_nodes, self.n_nodes).to(self.device)
+                    adjs_row.append(adj)
+                else:
+                    nodevec1 = torch.tanh(self.alpha * self.lin1(nodevec1))
+                    nodevec2 = torch.tanh(self.alpha * self.lin2(nodevec2))
 
-                a = torch.mm(nodevec1, nodevec2.transpose(1, 0)) - torch.mm(nodevec2, nodevec1.transpose(1, 0))
-                adj = F.relu(torch.tanh(self.alpha * a))
-                mask = torch.zeros(self.n_nodes, self.n_nodes).to(self.device)
-                mask.fill_(float('0'))
-                s1, t1 = (adj + torch.rand_like(adj) * 0.01).topk(self.k, 1)
-                mask.scatter_(1, t1, s1.fill_(1))
-                adj = adj * mask
-                adjs_row.append(adj)
+                    a = torch.mm(nodevec1, nodevec2.transpose(1, 0)) - torch.mm(nodevec2, nodevec1.transpose(1, 0))
+                    adj = torch.relu(torch.tanh(self.alpha * a))
+                    if self.full_graph:
+                        adjs_row.append(adj)
+                    else:
+                        mask = torch.zeros(self.n_nodes, self.n_nodes).to(self.device)
+                        mask.fill_(float('0'))
+                        s1, t1 = (adj + torch.rand_like(adj) * 0.01).topk(self.k, 1)
+                        mask.scatter_(1, t1, s1.fill_(1))
+                        adj = adj * mask
+                        adjs_row.append(adj)
             adjs.append(torch.stack(adjs_row, 0))  # (n_mix, n_nodes, n_nodes)
-        return torch.stack(adjs, 0)  # (n_mix * n_mix, n_nodes, n_nodes)
+        return torch.stack(adjs, 0)  # (n_mix, n_mix, n_nodes, n_nodes)
 
 
 class TimeEncoder(nn.Module):
@@ -60,7 +80,7 @@ class TimeEncoder(nn.Module):
 class CRGNNMix(nn.Module):
     def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, cross):
         super(CRGNNMix, self).__init__()
 
         self.n_mix = len(input_dim)
@@ -75,6 +95,7 @@ class CRGNNMix(nn.Module):
         self.n_nodes = num_nodes
         self.device = device
         self.layers = layers
+        self.cross = cross
 
         _dim = 0
         self.in_split, self.out_split = [], []
@@ -87,7 +108,7 @@ class CRGNNMix(nn.Module):
             _dim += d
 
         self.graph_constructor = CrossRelationGraphConstructor(nnodes=num_nodes, k=subgraph_size, dim=node_dim,
-                                                               device=device, alpha=tanhalpha)
+                                                               device=device, alpha=tanhalpha, n_mix=self.n_mix)
 
         models = []
         for i in range(self.n_mix):
@@ -102,6 +123,9 @@ class CRGNNMix(nn.Module):
 
         self.time_encoder = TimeEncoder(dim=self.skip_channels, len=self.seq_length)
 
+        if self.cross:
+            self.cross_weight = nn.Parameter(torch.randn(self.n_mix, self.n_mix), requires_grad=True)
+
     def pad_sequence(self, x):
         receptive_field = self.models[0].receptive_field
         if self.seq_length < receptive_field:
@@ -113,12 +137,11 @@ class CRGNNMix(nn.Module):
         x, time = input[..., :-2], input[..., -2:]
         bs = x.shape[0]
 
-        embs = [m.gc.emb1 for m in self.models]
-        # graphs = self.graph_constructor(embs)  # (n_mix, n_mix, n_nodes, n_nodes)
-        graphs = []
-        for i in range(self.n_mix):
-            _g = self.models[i].build_graph(x)
-            graphs.append(_g)
+        graphs = self.graph_constructor()  # (n_mix, n_mix, n_nodes, n_nodes)
+        # graphs = []
+        # for i in range(self.n_mix):
+        #     _g = self.models[i].build_graph(x)
+        #     graphs.append(_g)
 
         x = x.transpose(3, 1)
         x = self.pad_sequence(x)  # (bs, mix_in_dim, n_nodes, window)
@@ -142,8 +165,20 @@ class CRGNNMix(nn.Module):
                 output[i] = _out + output[i]
 
             for i in range(self.n_mix):
-                # todo add cross-relation graph here
-                x[i] = self.models[i].spatial_conv(x[i], graphs[i], l)
+                h = []
+                for j in range(self.n_mix):
+                    g, w = graphs[i, j], self.cross_weight[i, j]
+                    if i == j:
+                        w = w + 1
+                    # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
+                    _h = self.models[i].spatial_conv(x[j], g, l)
+                    _h = _h * w
+                    h.append(_h)
+                h = torch.stack(h, 0).sum(0)
+                x[i] = h
+            # for i in range(self.n_mix):
+            #     # todo add cross-relation graph here
+            #     x[i] = self.models[i].spatial_conv(x[i], graphs[i], l)
 
             for i in range(self.n_mix):
                 # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)

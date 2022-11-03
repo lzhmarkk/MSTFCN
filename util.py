@@ -13,7 +13,7 @@ from baselines import *
 class Logger(object):
     def __init__(self, fileN="Default.log"):
         self.terminal = sys.stdout
-        self.log = open(fileN, "a")
+        self.log = open(fileN, "w")
 
     def write(self, message):
         self.terminal.write(message)
@@ -126,7 +126,7 @@ def get_model(args):
                         dilation_exponential=args.dilation_exponential, layers=args.layers,
                         residual_channels=args.residual_channels,
                         conv_channels=args.conv_channels, skip_channels=args.skip_channels,
-                        end_channels=args.end_channels)
+                        end_channels=args.end_channels, cross=args.cross)
     elif args.model_name == "STID":
         model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,

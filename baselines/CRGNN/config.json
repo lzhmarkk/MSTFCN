@@ -1,6 +1,7 @@
 {
   "gcn_true": true,
   "buildA_true": true,
+  "cross": true,
   "gcn_depth": 2,
   "dropout": 0.3,
   "subgraph_size": 20,
@@ -11,7 +12,7 @@
   "skip_channels": 64,
   "end_channels": 128,
   "layers": 3,
-  "propalpha": 0.05,
+  "propalpha": 0.00,
   "tanhalpha": 3,
   "add_time": true
 }
