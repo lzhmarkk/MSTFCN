@@ -139,4 +139,4 @@ def get_fc_dim(train_size, channel):
     dim = (train_size - 8) * channel
     print(f"train_size {train_size}, fc dim {dim}")
     # assert dim == 97536
-    return dim
+    return 97536

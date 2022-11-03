@@ -6,6 +6,8 @@ import pandas as pd
 
 class StandardScaler:
     def __init__(self, data, dim=None):
+        if dim is None:
+            dim = data.shape[-1]
         if isinstance(dim, int):
             self.split_idx = [(0, dim)]
         elif isinstance(dim, list):

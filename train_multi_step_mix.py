@@ -8,7 +8,6 @@ from data.load_dataset import load_dataset_mix
 
 args = get_config()
 torch.set_num_threads(3)
-set_random_seed(args.seed)
 
 
 def evaluate(args, engine, dataloader):
@@ -40,7 +39,7 @@ def evaluate(args, engine, dataloader):
 
 def main(runid):
     # load data
-    save_folder = os.path.join('./saves', args.data, args.model_name, args.expid)
+    save_folder = os.path.join('./saves', args.data, args.model_name, args.expid + str(runid))
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     model_path = os.path.join(save_folder, 'best-model.pt')
@@ -163,6 +162,7 @@ if __name__ == "__main__":
     amae = []
     acorr = []
     for i in range(args.runs):
+        set_random_seed(args.seed + i)
         v1, v2, v3, t1, t2, t3, a1, a2, a3 = main(i)
         vrmse.append(v1)
         vmae.append(v2)
