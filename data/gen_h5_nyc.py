@@ -12,7 +12,9 @@ freq = "30min"
 normalized_k = .1
 
 
+# Generated file is not aligned. Please refer to gen_h5_chicago.py
 def get_adjacency_matrix(position_dict, normalized_k):
+    # position_dict (lat, lon)
     num_sensors = len(position_dict)
     dist_mx = np.zeros((num_sensors, num_sensors), dtype=float)
     dist_mx[:] = np.inf
@@ -58,7 +60,7 @@ if __name__ == '__main__':
 
     elif dataset == 'nyc-taxi':
         # since original data is too huge, extract records only in 2016Q2
-        if os.path.exists(f"./original/nyc-taxi/2016_Yellow_Taxi_Trip_Data_Q2.csv"):
+        if not os.path.exists(f"./original/nyc-taxi/2016_Yellow_Taxi_Trip_Data_Q2.csv"):
             df_iter = pd.read_csv(f"./original/nyc-taxi/2016_Yellow_Taxi_Trip_Data.csv", chunksize=10000)
 
             data = pd.DataFrame()
@@ -67,6 +69,7 @@ if __name__ == '__main__':
                 df['tpep_pickup_datetime'] = pd.to_datetime(df["tpep_pickup_datetime"])
                 df['tpep_dropoff_datetime'] = pd.to_datetime(df["tpep_dropoff_datetime"])
                 df = df[df['tpep_pickup_datetime'].apply(lambda r: r.year == 2016 and r.month in [4, 5, 6])]
+                df = df[df['tpep_dropoff_datetime'].apply(lambda r: r.year == 2016 and r.month in [4, 5, 6])]
                 data = pd.concat([data, df])
             data.to_csv(f"./original/nyc-taxi/2016_Yellow_Taxi_Trip_Data_Q2.csv")
 
@@ -103,10 +106,12 @@ if __name__ == '__main__':
 
             data = pd.DataFrame()
             for df in df_iter:
-                print(f"{pd.to_datetime(df['Trip Start Timestamp'].iloc[0])}")
+                # print(f"{pd.to_datetime(df['Trip Start Timestamp'].iloc[0])}")
                 df['Trip Start Timestamp'] = pd.to_datetime(df["Trip Start Timestamp"])
-                df = df[df['Trip Start Timestamp'].apply(lambda r: r.year == 2016 and r.month in [4, 5, 6])]
+                df = df[df['Trip Start Timestamp'].apply(lambda r: r.year == 2016)]
+                df = df[df['Trip End Timestamp'].apply(lambda r: r.year == 2016)]
                 data = pd.concat([data, df])
+                print(len(df))
             data.to_csv(f"./original/chicago-taxi/Taxi_Trips_2016Q2.csv")
 
         df = pd.read_csv(f"./original/chicago-taxi/Taxi_Trips_2016Q2.csv")

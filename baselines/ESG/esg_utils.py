@@ -115,23 +115,23 @@ class LayerNorm(nn.Module):
 def get_node_fea(data_set, train_num=0.7):
     path = f'data/h5data/{data_set}.h5'
 
-    if data_set == 'nyc-bike' or data_set == 'nyc-taxi':
-        x = h5py.File(path, 'r')
-        data = np.array(x['raw_data'])
-        data = data.transpose([0, 2, 1])  # (T, C, N)
-        df = data[:int(len(data) * train_num)]
-        scaler = StandardScaler(df)
-        train_feas = scaler.transform(df).reshape([-1, df.shape[2]])
-    else:
-        x = pd.read_hdf(path)
-        data = x.values
-        print(x.shape)
-        num_samples = data.shape[0]
-        num_train = round(num_samples * train_num)
-        df = data[:num_train]
-        print(df.shape)
-        scaler = StandardScaler(df)
-        train_feas = scaler.transform(df)
+    # if data_set == 'nyc-bike' or data_set == 'nyc-taxi':
+    x = h5py.File(path, 'r')
+    data = np.array(x['raw_data'])
+    data = data.transpose([0, 2, 1])  # (T, C, N)
+    df = data[:int(len(data) * train_num)]
+    scaler = StandardScaler(df)
+    train_feas = scaler.transform(df).reshape([-1, df.shape[2]])
+    # else:
+    #     x = pd.read_hdf(path)
+    #     data = x.values
+    #     print(x.shape)
+    #     num_samples = data.shape[0]
+    #     num_train = round(num_samples * train_num)
+    #     df = data[:num_train]
+    #     print(df.shape)
+    #     scaler = StandardScaler(df)
+    #     train_feas = scaler.transform(df)
     return train_feas
 
 
