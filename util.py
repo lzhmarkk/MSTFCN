@@ -81,6 +81,10 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         adj_mx = np.array(df['adjacency_matrix'])
         ret['adj_mx'] = get_normalized_adj(adj_mx)
+    elif args.model_name == 'MOHER':
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj_mx'] = np.array(df['adjacency_matrix'])
+        ret['node_fea'] = None
     return ret
 
 
@@ -127,7 +131,7 @@ def get_model(args):
                         dilation_exponential=args.dilation_exponential, layers=args.layers,
                         residual_channels=args.residual_channels,
                         conv_channels=args.conv_channels, skip_channels=args.skip_channels,
-                        end_channels=args.end_channels, cross=args.cross)
+                        end_channels=args.end_channels, cross=args.cross, temporal_module=args.temporal_module)
     elif args.model_name == "STID":
         model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,
@@ -135,6 +139,11 @@ def get_model(args):
     elif args.model_name == 'STGCN':
         model = STGCN(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
                       output_dim=args.output_dim, window=args.window, horizon=args.horizon)
+    elif args.model_name == 'MOHER':
+        model=MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
+                    horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
+                    gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
+                    n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
