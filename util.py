@@ -131,7 +131,7 @@ def get_model(args):
                         dilation_exponential=args.dilation_exponential, layers=args.layers,
                         residual_channels=args.residual_channels,
                         conv_channels=args.conv_channels, skip_channels=args.skip_channels,
-                        end_channels=args.end_channels, cross=args.cross, temporal_module=args.temporal_module)
+                        end_channels=args.end_channels, cross=args.cross, temporal_func=args.temporal_func)
     elif args.model_name == "STID":
         model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,

@@ -28,7 +28,7 @@ class CrossRelationGraphConstructor(nn.Module):
 
     def forward(self):
         adjs = []
-        for i, nodevec1 in enumerate(self.emb1):
+        for i, nodevec1 in enumerate(self.emb1):  # todo 反对称graph，两个方向的流量不同
             adjs_row = []
             # nodevec1 = nodevec1(self.emb2.weight)
             nodevec1 = nodevec1.weight
@@ -80,7 +80,7 @@ class TimeEncoder(nn.Module):
 class CRGNNMix(nn.Module):
     def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels, cross):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, cross, temporal_func):
         super(CRGNNMix, self).__init__()
 
         self.n_mix = len(input_dim)
@@ -113,12 +113,13 @@ class CRGNNMix(nn.Module):
         models = []
         for i in range(self.n_mix):
             models.append(CRGNN(device=device, adj_mx=adj_mx, gcn_true=gcn_true, buildA_true=buildA_true,
-                          num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
-                          input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
-                          subgraph_size=subgraph_size, node_dim=node_dim, tanhalpha=tanhalpha,
-                          propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
-                          residual_channels=residual_channels, conv_channels=conv_channels, skip_channels=skip_channels,
-                          end_channels=end_channels))
+                                num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
+                                input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
+                                subgraph_size=subgraph_size, node_dim=node_dim, tanhalpha=tanhalpha,
+                                propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
+                                residual_channels=residual_channels, conv_channels=conv_channels,
+                                skip_channels=skip_channels, end_channels=end_channels,
+                                temporal_func=temporal_func))
         self.models = nn.ModuleList(models)
 
         self.time_encoder = TimeEncoder(dim=self.skip_channels, len=self.seq_length)
@@ -176,9 +177,6 @@ class CRGNNMix(nn.Module):
                     h.append(_h)
                 h = torch.stack(h, 0).sum(0)
                 x[i] = h
-            # for i in range(self.n_mix):
-            #     # todo add cross-relation graph here
-            #     x[i] = self.models[i].spatial_conv(x[i], graphs[i], l)
 
             for i in range(self.n_mix):
                 # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
@@ -193,7 +191,7 @@ class CRGNNMix(nn.Module):
             x[i] = self.time_encoder(x[i], time)
             x[i] = self.models[i].end_conv(x[i])
 
-            x[i] = x[i].reshape(bs, self.horizon, self.output_dim[i], self.n_nodes, 1).squeeze(dim=-1).permute(0, 1, 3, 2)
+            x[i] = x[i].reshape(bs, self.horizon, self.output_dim[i], self.n_nodes, 1).squeeze(-1).permute(0, 1, 3, 2)
 
         x = torch.cat(x, -1)
         return x

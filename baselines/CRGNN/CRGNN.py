@@ -9,7 +9,8 @@ import torch.nn.functional as F
 class GCN(nn.Module):
     def __init__(self, c_in, c_out, gdep, dropout, alpha):
         super(GCN, self).__init__()
-        self.mlp = torch.nn.Conv2d((gdep + 1) * c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=True)
+        self.mlp = torch.nn.Conv2d((gdep + 1) * c_in, c_out, kernel_size=(1, 1), padding=(0, 0), stride=(1, 1),
+                                   bias=True)
         self.gdep = gdep
         self.dropout = dropout
         self.alpha = alpha
@@ -140,10 +141,47 @@ class dilated_inception(nn.Module):
         return x
 
 
+class TemporalModule(nn.Module):
+    def __init__(self, device, temporal_func, residual_channels, conv_channels, dilation, begin_dim, end_dim, dropout):
+        super(TemporalModule, self).__init__()
+        self.device = device
+        self.temporal_func = temporal_func
+        self.residual_channels = residual_channels
+        self.conv_channels = conv_channels
+        self.dilation = dilation
+        self.begin_dim = begin_dim
+        self.end_dim = end_dim
+        self.dropout = dropout
+
+        if self.temporal_func == 'TCN':
+            self.filter_conv = dilated_inception(self.residual_channels, self.conv_channels, dilation_factor=dilation)
+            self.gate_conv = dilated_inception(self.residual_channels, self.conv_channels, dilation_factor=dilation)
+        elif self.temporal_func == 'MLP':
+            self.mlp = nn.Sequential(
+                nn.Linear(self.begin_dim, self.end_dim, bias=True),
+                nn.GELU(),
+                nn.Linear(self.end_dim, self.end_dim, bias=True)
+            )
+        else:
+            raise ValueError()
+
+    def forward(self, x):
+        if self.temporal_func == 'TCN':
+            filter = torch.tanh(self.filter_conv(x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+            gate = torch.sigmoid(self.gate_conv(x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
+            x = filter * gate
+            x = F.dropout(x, self.dropout, training=self.training)
+        elif self.temporal_func == 'MLP':
+            x = self.mlp(x)
+        else:
+            raise ValueError()
+        return x
+
+
 class CRGNN(nn.Module):
     def __init__(self, device, adj_mx, gcn_true, buildA_true, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, temporal_func):
         super(CRGNN, self).__init__()
         self.device = device
         self.gcn_true = gcn_true
@@ -152,8 +190,7 @@ class CRGNN(nn.Module):
         self.gcn_depth = gcn_depth
         self.dropout = dropout
         self.predefined_A = (torch.tensor(adj_mx) - torch.eye(self.num_nodes)).to(self.device).float()
-        self.filter_convs = nn.ModuleList()
-        self.gate_convs = nn.ModuleList()
+        self.temporal_layers = nn.ModuleList()
         self.residual_convs = nn.ModuleList()
         self.skip_convs = nn.ModuleList()
         self.gconv1 = nn.ModuleList()
@@ -176,6 +213,7 @@ class CRGNN(nn.Module):
         self.conv_channels = conv_channels
         self.skip_channels = skip_channels
         self.end_channels = end_channels
+        self.temporal_func = temporal_func
 
         # modules
         self.idx = torch.arange(self.num_nodes).to(self.device)
@@ -207,10 +245,14 @@ class CRGNN(nn.Module):
             else:
                 rf_size_j = rf_size_i + j * (kernel_size - 1)
 
-            self.filter_convs.append(
-                dilated_inception(self.residual_channels, self.conv_channels, dilation_factor=new_dilation))
-            self.gate_convs.append(
-                dilated_inception(self.residual_channels, self.conv_channels, dilation_factor=new_dilation))
+            # Temporal Block
+            begin_dim = self.receptive_field - (rf_size_j - (kernel_size - 1)) + 1
+            end_dim = self.receptive_field - rf_size_j + 1
+            self.temporal_layers.append(TemporalModule(device=device, temporal_func=temporal_func,
+                                                       residual_channels=residual_channels, conv_channels=conv_channels,
+                                                       dilation=new_dilation, begin_dim=begin_dim, end_dim=end_dim,
+                                                       dropout=dropout))
+
             self.residual_convs.append(nn.Conv2d(in_channels=self.conv_channels,
                                                  out_channels=self.residual_channels,
                                                  kernel_size=(1, 1)))
@@ -314,11 +356,7 @@ class CRGNN(nn.Module):
             return g
 
     def temporal_conv(self, x, layer):
-        filter = torch.tanh(self.filter_convs[layer](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
-        gate = torch.sigmoid(self.gate_convs[layer](x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
-        x = filter * gate
-        x = F.dropout(x, self.dropout, training=self.training)  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
-        return x
+        return self.temporal_layers[layer](x)
 
     def spatial_conv(self, x, g, layer):
         if self.gcn_true:

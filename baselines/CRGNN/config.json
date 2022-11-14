@@ -2,17 +2,21 @@
   "gcn_true": true,
   "buildA_true": true,
   "cross": true,
+  "temporal_func": "MLP",
+
   "gcn_depth": 2,
   "dropout": 0.3,
   "subgraph_size": 20,
   "node_dim": 40,
   "dilation_exponential": 1,
+  "layers": 3,
+  "propalpha": 0.00,
+  "tanhalpha": 3,
+
   "conv_channels": 32,
   "residual_channels": 32,
   "skip_channels": 64,
   "end_channels": 128,
-  "layers": 3,
-  "propalpha": 0.00,
-  "tanhalpha": 3,
+
   "add_time": true
 }
