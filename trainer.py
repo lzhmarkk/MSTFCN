@@ -5,11 +5,13 @@ import torch.optim as optim
 
 import util
 class Trainer():
-    def __init__(self, model, lrate, wdecay, clip, step_size, seq_out_len, scaler, device, cl=True, mask=False):
+    def __init__(self, model, lrate, wdecay, clip, step_size, seq_out_len, scaler, device, patience=50,
+                 cl=True, mask=False):
         self.scaler = scaler
         self.model = model
         self.model.to(device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lrate, weight_decay=wdecay)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=int(patience * 0.8))
         self.loss = util.masked_mae
         self.clip = clip
         self.step = step_size
@@ -28,8 +30,8 @@ class Trainer():
         assert predict.shape == real.shape, f'{predict.shape}, {real.shape}'
         if self.iter%self.step==0 and self.task_level<=self.seq_out_len:
             self.task_level +=1           
-            # if self.cl:
-            #     print('task_level:',self.task_level)
+            if self.cl:
+                print('task_level:', self.task_level)
         if self.cl:
             if self.mask:           
                 loss = self.loss(predict[:, :self.task_level, :, :], real[:, :self.task_level, :, :], 0.0)

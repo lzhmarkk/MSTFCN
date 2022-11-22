@@ -7,7 +7,6 @@ from tensorboardX import SummaryWriter
 from data.load_dataset import load_dataset_mix
 
 args = get_config()
-torch.set_num_threads(3)
 
 
 def evaluate(args, engine, dataloader):
@@ -38,6 +37,7 @@ def evaluate(args, engine, dataloader):
 
 
 def main(runid):
+    set_random_seed(args.seed + runid)
     # load data
     save_folder = os.path.join('./saves', args.data, args.model_name, args.expid + str(runid))
     if not os.path.exists(save_folder):
@@ -63,7 +63,7 @@ def main(runid):
     writer = SummaryWriter(run_folder)
 
     engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size,
-                     args.horizon, args.scaler, args.device, args.cl, args.mask0)
+                     args.horizon, args.scaler, args.device, args.early_stop_steps, args.cl, args.mask0)
 
     # train model
     print("start training...", flush=True)
@@ -73,7 +73,7 @@ def main(runid):
     for i in range(args.epochs):
         train_loss = []
         t = time.time()
-        # dataloader['train_loader'].shuffle()
+        dataloader['train_loader'].shuffle()
         tqdm_loader = tqdm(dataloader['train_loader'], ncols=150)
         for iter, (x, y) in enumerate(tqdm_loader):
             x = torch.Tensor(x).to(args.device)  # [B, T, N, C + time], inverse_transformed
@@ -83,6 +83,7 @@ def main(runid):
 
             tqdm_loader.set_description('Iter: {:03d}, Train Loss: {:.4f}'.format(iter, train_loss[-1]))
 
+        engine.scheduler.step()
         train_time.append(time.time() - t)
         train_loss = np.mean(train_loss).item()
 
@@ -94,9 +95,13 @@ def main(runid):
         valid_time.append(time.time() - t)
         his_loss.append(valid_loss)
 
-        print('Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, '
+        # print('Epoch: {:03d}, Train Loss: {:.4f}, Valid Loss: {:.4f}, '
+        #       'Training Time: {:.2f}s/epoch, Inference Time: {:.2f}s/epoch'.
+        #       format(i, train_loss, valid_loss, train_time[-1], valid_time[-1]), flush=True)
+        print('Epoch: {:03d}, lr: {:.8f}, Train Loss: {:.4f}, Valid Loss: {:.4f}, '
               'Training Time: {:.2f}s/epoch, Inference Time: {:.2f}s/epoch'.
-              format(i, train_loss, valid_loss, train_time[-1], valid_time[-1]), flush=True)
+              format(i, engine.scheduler.get_last_lr()[0], train_loss, valid_loss, train_time[-1], valid_time[-1]),
+              flush=True)
         writer.add_scalars('loss', {'train': train_loss}, global_step=i)
         writer.add_scalars('loss', {'valid': valid_loss}, global_step=i)
 
@@ -162,7 +167,6 @@ if __name__ == "__main__":
     amae = []
     acorr = []
     for i in range(args.runs):
-        set_random_seed(args.seed + i)
         v1, v2, v3, t1, t2, t3, a1, a2, a3 = main(i)
         vrmse.append(v1)
         vmae.append(v2)

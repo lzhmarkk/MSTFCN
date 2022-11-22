@@ -57,7 +57,7 @@ def main(runid):
     writer = SummaryWriter(run_folder)
 
     engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size,
-                     args.horizon, args.scaler, args.device, args.cl, args.mask0)
+                     args.horizon, args.scaler, args.device, args.early_stop_steps, args.cl, args.mask0)
 
     # train model
     print("start training...", flush=True)

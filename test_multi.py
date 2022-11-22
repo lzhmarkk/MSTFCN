@@ -45,7 +45,7 @@ def main(runid):
         model = torch.load(f)
 
     engine = Trainer(model, args.learning_rate, args.weight_decay, args.clip, args.step_size,
-                     args.horizon, args.scaler, args.device, args.cl, args.mask0)
+                     args.horizon, args.scaler, args.device, args.early_stop_steps, args.cl, args.mask0)
 
     # valid model
     _, valid_scores, _, _ = evaluate(args, engine, dataloader['val_loader'])
