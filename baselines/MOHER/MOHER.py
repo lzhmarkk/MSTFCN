@@ -14,7 +14,7 @@ class MOHER(nn.Module):
     """
 
     def __init__(self, device, adj_mx, num_nodes, window, horizon, input_dim, output_dim, gamma, beta, subgraph_size,
-                 static_feat, n_heads, n_layers, hidden_dim, dropout):
+                 static_feat, n_heads, n_layers, hidden_dim, dropout, summarize):
         super(MOHER, self).__init__()
 
         self.adj_mx = adj_mx
@@ -34,6 +34,7 @@ class MOHER(nn.Module):
         self.hidden_dim = hidden_dim
         self.use_poi_graph = self.static_feat is not None
         self.dropout = dropout
+        self.summarize = summarize
 
         _dim = 0
         self.in_split, self.out_split = [], []
@@ -53,7 +54,7 @@ class MOHER(nn.Module):
         self.n_rel = len(self.graphs) * self.n_mix * self.n_mix
 
         self.GCN = CMRGCN(device=device, dim=hidden_dim, n_layers=n_layers, n_mix=self.n_mix, n_heads=n_heads,
-                          n_relations=self.n_rel, n_nodes=num_nodes, subgraph_size=subgraph_size)
+                          n_relations=self.n_rel, n_nodes=num_nodes, subgraph_size=subgraph_size, summarize=summarize)
 
         self.start_conv = nn.ModuleList([nn.Conv2d(self.input_dim[i], hidden_dim, kernel_size=(1, 1))
                                          for i in range(self.n_mix)])

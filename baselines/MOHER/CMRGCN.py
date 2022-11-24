@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class CMRGCN(nn.Module):
-    def __init__(self, device, dim, n_nodes, n_mix, n_layers, n_heads, n_relations, subgraph_size):
+    def __init__(self, device, dim, n_nodes, n_mix, n_layers, n_heads, n_relations, subgraph_size, summarize):
         super(CMRGCN, self).__init__()
 
         self.device = device
@@ -14,6 +14,7 @@ class CMRGCN(nn.Module):
         self.n_relations = n_relations
         self.n_nodes = n_nodes
         self.subgraph_size = subgraph_size
+        self.summarize = summarize
 
         self.residual = nn.Linear(dim, dim, bias=True)
         # self.residual = nn.Conv2d(self.dim, self.dim, kernel_size=(1, 1), bias=True)
@@ -76,15 +77,16 @@ class CMRGCN(nn.Module):
             g[i] = torch.cat(g[i], dim=1)  # (bs, n_layers * dim, n_nodes, window) * n_mix
 
         # summarizing
-        for i in range(self.n_mix):
-            __ = []
-            for t, (adj, nei, wei) in enumerate(zip(graph, neighbors, neighbors_weight)):
-                _ = []
-                for tgt in range(self.n_nodes):
-                    h = g[i][:, :, nei[tgt], :] * wei[tgt].reshape(1, 1, len(wei[tgt]), 1)
-                    _.append(torch.sum(h, 2))  # (bs, n_layers * dim, window)
-                _ = torch.stack(_, 2)  # (bs, n_layers * dim, n_nodes, window)
-                __.append(_)
-            g[i] = torch.cat(__, 1)
+        if self.summarize:
+            for i in range(self.n_mix):
+                __ = []
+                for t, (adj, nei, wei) in enumerate(zip(graph, neighbors, neighbors_weight)):
+                    _ = []
+                    for tgt in range(self.n_nodes):
+                        h = g[i][:, :, nei[tgt], :] * wei[tgt].reshape(1, 1, len(wei[tgt]), 1)
+                        _.append(torch.sum(h, 2))  # (bs, n_layers * dim, window)
+                    _ = torch.stack(_, 2)  # (bs, n_layers * dim, n_nodes, window)
+                    __.append(_)
+                g[i] = torch.cat(__, 1)
 
         return g

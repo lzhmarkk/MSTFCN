@@ -143,7 +143,8 @@ def get_model(args):
         model=MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
                     horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
                     gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
-                    n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout)
+                    n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout,
+                    summarize=args.summarize)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
