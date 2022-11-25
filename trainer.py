@@ -20,6 +20,7 @@ class Trainer():
         self.seq_out_len = seq_out_len
         self.cl = cl
         self.mask = mask
+        self.cl_done = not self.cl
     def train(self, input, real, pred_time):
         self.model.train()
         self.optimizer.zero_grad()
@@ -28,10 +29,11 @@ class Trainer():
         predict = self.scaler.inverse_transform(output)
         real = self.scaler.inverse_transform(real)
         assert predict.shape == real.shape, f'{predict.shape}, {real.shape}'
-        if self.iter%self.step==0 and self.task_level<=self.seq_out_len:
-            self.task_level +=1           
-            if self.cl:
+        if self.cl and self.iter % self.step == 0:
+            if self.task_level <= self.seq_out_len:
+                self.task_level += 1
                 print('task_level:', self.task_level)
+                self.cl_done = (self.task_level > self.seq_out_len)
         if self.cl:
             if self.mask:           
                 loss = self.loss(predict[:, :self.task_level, :, :], real[:, :self.task_level, :, :], 0.0)

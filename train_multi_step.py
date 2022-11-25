@@ -94,7 +94,7 @@ def main(runid):
         writer.add_scalars('loss', {'train': train_loss}, global_step=i)
         writer.add_scalars('loss', {'valid': valid_loss}, global_step=i)
 
-        if valid_loss < min_valid_loss:
+        if valid_loss < min_valid_loss and engine.cl_done:
             with open(model_path, 'wb') as f:
                 torch.save(engine.model, f)
             min_valid_loss = valid_loss
@@ -177,15 +177,15 @@ if __name__ == "__main__":
 
     print(f'\n\nResults for {args.runs} runs\n\n')
     # valid data
-    print('valid\tRMSE\tMAE\tCORR')
-    print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vrmse), np.mean(vmae), np.mean(vcorr)))
-    print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vrmse), np.std(vmae), np.std(vcorr)))
+    print('valid\tMAE\tRMSE\tCORR')
+    print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vmae), np.mean(vrmse), np.mean(vcorr)))
+    print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vmae), np.std(vrmse), np.std(vcorr)))
     print('\n\n')
     # test data
-    print('test|horizon\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
+    print('test|horizon\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std')
     for i in [2, 5, 11]:
         print('{:d}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
-              .format(i + 1, mrmse[i], mmae[i], mcorr[i], srmse[i], smae[i], scorr[i]))
-    print('test|All\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std'
-          .format(0, np.mean(armse, 0), np.mean(amae, 0), np.mean(acorr, 0), np.std(armse, 0), np.std(amae, 0),
+              .format(i + 1, mmae[i], mrmse[i], mcorr[i], smae[i], srmse[i], scorr[i]))
+    print('test|All\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std'
+          .format(0, np.mean(amae, 0), np.mean(armse, 0), np.mean(acorr, 0), np.std(amae, 0), np.std(armse, 0),
                   np.std(acorr, 0)))

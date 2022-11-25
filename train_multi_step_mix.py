@@ -198,17 +198,17 @@ if __name__ == "__main__":
     print(f'\n\nResults for {args.runs} runs\n\n')
     # valid data
     for j in range(len(args.input_dim)):
-        print('valid\tRMSE\tMAE\tCORR')
-        print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vrmse[:, j]), np.mean(vmae[:, j]), np.mean(vcorr[:, j])))
-        print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vrmse[:, j]), np.std(vmae[:, j]), np.std(vcorr[:, j])))
+        print('valid\tMAE\tRMSE\tCORR')
+        print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vmae[:, j]), np.mean(vrmse[:, j]), np.mean(vcorr[:, j])))
+        print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vmae[:, j]), np.std(vrmse[:, j]), np.std(vcorr[:, j])))
         print('\n\n')
         # test data
-        print('test|horizon\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\t\tcorr-std')
+        print('test|horizon\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std')
         for i in [2, 5, 11]:
-            print('{:d}\t\t\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}'
-                  .format(i + 1, mrmse[j, i], mmae[j, i], mcorr[j, i], srmse[j, i], smae[j, i], scorr[j, i]))
-        print('test|All\t\tRMSE-mean\tMAE-mean\tCORR-mean\tRMSE-std\tMAE-std\tcorr-std')
-        print('{:d}\t\t\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}\t\t{:.4f}'
-              .format(0, np.mean(armse[:, j], 0), np.mean(amae[:, j], 0), np.mean(acorr[:, j], 0),
-                      np.std(armse[:, j], 0), np.std(amae[:, j], 0), np.std(acorr[:, j], 0)))
+            print('{:d}\t\t\t\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t\t{:.4f}\t{:.4f}'
+                  .format(i + 1, mmae[j, i], mrmse[j, i], mcorr[j, i], smae[j, i], srmse[j, i], scorr[j, i]))
+        print('test|All\t\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std')
+        print('{:d}\t\t\t\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
+              .format(0, np.mean(amae[:, j], 0), np.mean(armse[:, j], 0), np.mean(acorr[:, j], 0),
+                      np.std(amae[:, j], 0), np.std(armse[:, j], 0), np.std(acorr[:, j], 0)))
         print("-" * 30)
