@@ -1,6 +1,4 @@
 {
-  "gcn_true": true,
-  "buildA_true": true,
   "cross": true,
   "temporal_func": "MLP",
 
