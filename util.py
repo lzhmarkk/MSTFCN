@@ -122,6 +122,11 @@ def get_model(args):
                       dilation_exponential=args.dilation_exponential, layers=args.layers, residual_channels=args.residual_channels,
                       conv_channels=args.conv_channels, skip_channels=args.skip_channels, end_channels=args.end_channels,
                       add_time=args.add_time)
+    elif args.model_name == 'FCGAGA':
+        model = FCGAGA(device=args.device, n_stacks=args.n_stacks, n_blocks=args.n_blocks,
+                       block_layers=args.block_layers, hidden_units=args.hidden_units,
+                       node_id_dim=args.node_id_dim, input_dim=args.input_dim, output_dim=args.output_dim,
+                       num_nodes=args.num_nodes, window=args.window, horizon=args.horizon, epsilon=args.epsilon)
     elif args.model_name == 'CRGNN':
         model = CRGNN(device=args.device, num_nodes=args.num_nodes, gcn_depth=args.gcn_depth, dropout=args.dropout,
                       input_dim=args.input_dim, output_dim=args.output_dim, window=args.window, horizon=args.horizon,

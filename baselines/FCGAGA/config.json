@@ -1,0 +1,9 @@
+{
+  "n_stacks": 3,
+  "n_blocks": 2,
+  "block_layers": 3,
+  "hidden_units": 128,
+  "node_id_dim": 64,
+  "epsilon": 10,
+  "add_time": true
+}
