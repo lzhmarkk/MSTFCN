@@ -1,5 +1,5 @@
 {
-  "cross": true,
+  "cross": 2,
   "temporal_func": "MLP",
 
   "gcn_depth": 2,

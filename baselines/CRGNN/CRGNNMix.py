@@ -34,7 +34,8 @@ class CRGNNMix(nn.Module):
             _dim += d
 
         self.graph_constructor = CrossRelationGraphConstructor(nnodes=num_nodes, k=subgraph_size, dim=node_dim,
-                                                               device=device, alpha=tanhalpha, n_mix=self.n_mix)
+                                                               device=device, alpha=tanhalpha, n_mix=self.n_mix,
+                                                               cross_relation=self.cross)
 
         models = []
         for i in range(self.n_mix):
