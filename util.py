@@ -91,14 +91,16 @@ def get_auxiliary(args, dataloader):
 def get_model(args):
     if args.model_name == 'ESG':
         model = ESG(args.dy_embedding_dim, args.dy_interval, args.num_nodes, args.window, args.horizon, args.input_dim,
-                    args.output_dim, 1, args.layers, conv_channels=args.conv_channels, residual_channels=args.residual_channels,
+                    args.output_dim, 1, args.layers, conv_channels=args.conv_channels,
+                    residual_channels=args.residual_channels,
                     skip_channels=args.skip_channels, end_channels=args.end_channels, kernel_set=args.kernel_set,
                     dilation_exp=args.dilation_exponential, gcn_depth=args.gcn_depth,
                     device=args.device, fc_dim=args.fc_dim, st_embedding_dim=args.st_embedding_dim,
                     dropout=args.dropout, propalpha=args.propalpha, layer_norm_affline=False,
                     static_feat=args.node_fea)
     elif args.model_name == 'DCRNN':
-        model = DCRNN(adj_mx=args.adj_mx, num_batches=args.num_batches, device=args.device, max_diffusion_step=args.max_diffusion_step,
+        model = DCRNN(adj_mx=args.adj_mx, num_batches=args.num_batches, device=args.device,
+                      max_diffusion_step=args.max_diffusion_step,
                       cl_decay_steps=args.step_size, filter_type=args.filter_type, num_nodes=args.num_nodes,
                       num_rnn_layers=args.num_rnn_layers, rnn_units=args.rnn_units, use_curriculum_learning=args.cl,
                       input_dim=args.input_dim, window=args.window, output_dim=args.output_dim, horizon=args.horizon)
@@ -106,21 +108,26 @@ def get_model(args):
         model = GMAN(SE=args.se, device=args.device, L=args.L, K=args.K, d=args.d, bn_decay=args.bn_decay,
                      window=args.window, input_dim=args.input_dim, output_dim=args.output_dim)
     elif args.model_name == 'GWNet':
-        model = GWNet(adj_mx=args.adj_mx, device=args.device, adjtype=args.adjtype, randomadj=args.randomadj, aptonly=args.aptonly,
+        model = GWNet(adj_mx=args.adj_mx, device=args.device, adjtype=args.adjtype, randomadj=args.randomadj,
+                      aptonly=args.aptonly,
                       nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim, num_nodes=args.num_nodes,
                       kernel_size=args.kernel_size, horizon=args.horizon, window=args.window, dropout=args.dropout,
                       blocks=args.blocks, layers=args.layers, gcn_bool=args.gcn_bool, addaptadj=args.addaptadj)
     elif args.model_name == 'MLPMixer':
         model = MLPMixer(device=args.device, input_dim=args.input_dim, output_dim=args.output_dim, window=args.window,
-                         horizon=args.horizon, hidden_dim=args.hidden_dim, dropout=args.dropout, num_nodes=args.num_nodes,
+                         horizon=args.horizon, hidden_dim=args.hidden_dim, dropout=args.dropout,
+                         num_nodes=args.num_nodes,
                          use_fft=args.use_fft, fft_dropout=args.fft_dropout)
     elif args.model_name == 'MTGNN':
         model = MTGNN(device=args.device, adj_mx=args.adj_mx, gcn_true=args.gcn_true, buildA_true=args.buildA_true,
                       num_nodes=args.num_nodes, gcn_depth=args.gcn_depth, dropout=args.dropout,
                       input_dim=args.input_dim, output_dim=args.output_dim, window=args.window, horizon=args.horizon,
-                      subgraph_size=args.subgraph_size, node_dim=args.node_dim, tanhalpha=args.tanhalpha, propalpha=args.propalpha,
-                      dilation_exponential=args.dilation_exponential, layers=args.layers, residual_channels=args.residual_channels,
-                      conv_channels=args.conv_channels, skip_channels=args.skip_channels, end_channels=args.end_channels,
+                      subgraph_size=args.subgraph_size, node_dim=args.node_dim, tanhalpha=args.tanhalpha,
+                      propalpha=args.propalpha,
+                      dilation_exponential=args.dilation_exponential, layers=args.layers,
+                      residual_channels=args.residual_channels,
+                      conv_channels=args.conv_channels, skip_channels=args.skip_channels,
+                      end_channels=args.end_channels,
                       add_time=args.add_time)
     elif args.model_name == 'FCGAGA':
         model = FCGAGA(device=args.device, n_stacks=args.n_stacks, n_blocks=args.n_blocks,
@@ -137,18 +144,19 @@ def get_model(args):
                       conv_channels=args.conv_channels, skip_channels=args.skip_channels,
                       end_channels=args.end_channels, cross=args.cross, temporal_func=args.temporal_func)
     elif args.model_name == "STID":
-        model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window, horizon=args.horizon,
+        model = STID(device=args.device, num_nodes=args.num_nodes, node_dim=args.node_dim, window=args.window,
+                     horizon=args.horizon,
                      input_dim=args.input_dim, output_dim=args.output_dim, embed_dim=args.embed_dim,
                      num_mlp_layers=args.num_mlp_layers, temp_dim_tid=args.temp_dim_tid, temp_dim_diw=args.temp_dim_diw)
     elif args.model_name == 'STGCN':
         model = STGCN(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
                       output_dim=args.output_dim, window=args.window, horizon=args.horizon)
     elif args.model_name == 'MOHER':
-        model=MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
-                    horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
-                    gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
-                    n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout,
-                    summarize=args.summarize)
+        model = MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
+                      horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
+                      gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
+                      n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout,
+                      summarize=args.summarize)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
@@ -158,12 +166,12 @@ def masked_mae(preds, labels, null_val=np.nan):
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
-        mask = (labels!=null_val)
+        mask = (labels != null_val)
     mask = mask.float()
-    mask /=  torch.mean((mask))
+    mask /= torch.mean((mask))
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
 
-    loss = torch.abs(preds-labels)
+    loss = torch.abs(preds - labels)
     loss = loss * mask
     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
     return torch.mean(loss)

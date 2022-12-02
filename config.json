@@ -6,8 +6,8 @@
 
     "epochs": 1000,
     "early_stop": true,
-    "early_stop_steps": 50,
-    "runs": 1,
+    "early_stop_steps": 100,
+    "runs": 2,
 
     "window": 12,
     "horizon": 12,
@@ -16,9 +16,9 @@
 
     "mask0": false,
     "cl": false,
-    "batch_size": 256,
+    "batch_size": 64,
     "learning_rate": 0.002,
     "weight_decay": 0.0001,
     "clip": 5,
-    "step_size": 400
+    "step_size": 240
 }
