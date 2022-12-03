@@ -1,0 +1,7 @@
+{
+  "Ks": 2,
+  "Kc": 2,
+  "hidden_dim": 16,
+  "nn_layers": 2,
+  "add_time": false
+}

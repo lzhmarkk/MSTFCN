@@ -9,6 +9,7 @@ from .CRGNN.CRGNNMix import CRGNNMix as CRGNN
 from .STGCN.STGCN import STGCN
 from .STID.STID import STID
 from .MOHER.MOHER import MOHER
+from .STCGNN.STCGNN import STCGNN
 
 __all__ = [
     "DCRNN",
@@ -21,5 +22,6 @@ __all__ = [
     "CRGNN",
     "STGCN",
     "STID",
-    "MOHER"
+    "MOHER",
+    "STCGNN"
 ]

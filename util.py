@@ -85,6 +85,11 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
         ret['node_fea'] = None
+    elif args.model_name == 'STCGNN':
+        from baselines.STCGNN.util import gen_Ac
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['As'] = np.array(df['adjacency_matrix'])
+        ret['Ac'] = gen_Ac(np.array(df['raw_data']))
     return ret
 
 
@@ -157,6 +162,10 @@ def get_model(args):
                       gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
                       n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout,
                       summarize=args.summarize)
+    elif args.model_name == 'STCGNN':
+        model = STCGNN(device=args.device, num_nodes=args.num_nodes, Ks=args.Ks, Kc=args.Kc, input_dim=args.input_dim,
+                       output_dim=args.output_dim, hidden_dim=args.hidden_dim, num_layers=args.nn_layers,
+                       in_window=args.window, out_horizon=args.horizon, As=args.As, Ac=args.Ac)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
