@@ -86,8 +86,8 @@ class CRGNNMix(nn.Module):
             for i in range(self.n_mix):
                 x[i] = self.models[i].temporal_layer(x[i], l)
 
-                _out = self.models[i].skip_convs[l](x[i])  # (bs, skp_channel, n_nodes, 1)
-                output[i] = _out + output[i]
+                # _out = self.models[i].skip_convs[l](x[i])  # (bs, skp_channel, n_nodes, 1)
+                # output[i] = _out + output[i]
 
             for i in range(self.n_mix):
                 h = []
@@ -107,10 +107,12 @@ class CRGNNMix(nn.Module):
 
             for i in range(self.n_mix):
                 # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
-                x[i] = x[i] + residuals[i][:, :, :, -x[i].size(3):]  # todo block-wise residual
+                # x[i] = x[i] + residuals[i][:, :, :, -x[i].size(3):]
+                _out = self.models[i].skip_convs[l](x[i])  # (bs, skp_channel, n_nodes, 1)
+                output[i] = _out + output[i]
 
         for i in range(self.n_mix):
-            output[i] = self.models[i].skipE(x[i]) + output[i]
+            # output[i] = self.models[i].skipE(x[i]) + output[i]
             x[i] = F.relu(output[i])
 
             # time encoding

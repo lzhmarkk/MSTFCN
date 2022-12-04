@@ -40,8 +40,8 @@ class CRGNNBlock(nn.Module):
 
     def channel_layer(self, x):
         h = self.channel_mixer(x)
-        # h = h + x
-        # h = self.channel_norm(h)
+        h = h + x
+        h = self.channel_norm(h)
         return h
 
 
@@ -98,8 +98,8 @@ class CRGNN(nn.Module):
 
         # skip connection
         end_length = max(1, window - self.receptive_field + 1)
-        self.skipE = nn.Conv2d(in_channels=residual_channels, out_channels=skip_channels,
-                               kernel_size=(1, end_length), bias=True)
+        # self.skipE = nn.Conv2d(in_channels=residual_channels, out_channels=skip_channels,
+        #                        kernel_size=(1, end_length), bias=True)
 
         # final output
         self.end_conv = nn.Sequential(nn.Conv2d(in_channels=3 * skip_channels,
