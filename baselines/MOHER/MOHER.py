@@ -71,6 +71,7 @@ class MOHER(nn.Module):
         self.to(self.device)
 
     def forward(self, input, **kwargs):
+        input, time = input[..., :-2], input[..., -2:]
         bs = input.shape[0]
         x = input.transpose(3, 1)
         # x = self.pad_sequence(x)  # (bs, mix_in_dim, n_nodes, window)

@@ -45,7 +45,7 @@ def main(runid):
     model_path = os.path.join(save_folder, 'best-model.pt')
     sys.stdout = Logger(os.path.join(save_folder, 'log.txt'))
     dataloader = load_dataset_mix(args.data, args.batch_size, args.window, args.horizon, args.input_dim,
-                                  args.output_dim, add_time=args.add_time)
+                                  args.output_dim, add_time=True)
     setattr(args, 'device', torch.device(args.device))
     setattr(args, 'scaler', dataloader['scaler'])
 

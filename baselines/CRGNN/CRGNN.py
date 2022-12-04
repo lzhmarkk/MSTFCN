@@ -48,7 +48,7 @@ class CRGNNBlock(nn.Module):
 class CRGNN(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels, temporal_func):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, temporal_func, add_time):
         super(CRGNN, self).__init__()
         self.device = device
         self.num_nodes = num_nodes
@@ -102,7 +102,7 @@ class CRGNN(nn.Module):
         #                        kernel_size=(1, end_length), bias=True)
 
         # final output
-        self.end_conv = nn.Sequential(nn.Conv2d(in_channels=3 * skip_channels,
+        self.end_conv = nn.Sequential(nn.Conv2d(in_channels=(3 if add_time else 1) * skip_channels,
                                                 out_channels=end_channels,
                                                 kernel_size=(1, 1),
                                                 bias=True),

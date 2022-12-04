@@ -10,7 +10,7 @@ from .TimeEncoder import TimeEncoder
 class CRGNNMix(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
-                 layers, residual_channels, conv_channels, skip_channels, end_channels, cross, temporal_func):
+                 layers, residual_channels, conv_channels, skip_channels, end_channels, cross, temporal_func, add_time):
         super(CRGNNMix, self).__init__()
 
         self.n_mix = len(input_dim)
@@ -22,6 +22,7 @@ class CRGNNMix(nn.Module):
         self.device = device
         self.layers = layers
         self.cross = cross
+        self.add_time = add_time
 
         _dim = 0
         self.in_split, self.out_split = [], []
@@ -44,10 +45,11 @@ class CRGNNMix(nn.Module):
                                 propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
                                 residual_channels=residual_channels, conv_channels=conv_channels,
                                 skip_channels=skip_channels, end_channels=end_channels,
-                                temporal_func=temporal_func))
+                                temporal_func=temporal_func, add_time=add_time))
         self.models = nn.ModuleList(models)
 
-        self.time_encoder = TimeEncoder(dim=skip_channels, length=window)
+        if self.add_time:
+            self.time_encoder = TimeEncoder(dim=skip_channels, length=window)
         self.dropout = nn.Dropout(dropout)
 
         if self.cross:
@@ -116,7 +118,7 @@ class CRGNNMix(nn.Module):
             x[i] = F.relu(output[i])
 
             # time encoding
-            x[i] = self.time_encoder(x[i], time)
+            x[i] = self.time_encoder(x[i], time) if self.add_time else x[i]
             x[i] = self.models[i].end_conv(x[i])
 
             x[i] = x[i].reshape(bs, self.horizon, self.output_dim[i], self.n_nodes, 1).squeeze(-1).permute(0, 1, 3, 2)

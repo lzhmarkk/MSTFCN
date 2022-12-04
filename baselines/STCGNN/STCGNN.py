@@ -207,6 +207,7 @@ class STCGNN(nn.Module):
         self.to(device)
 
     def forward(self, input, **kwargs):
+        input, time = input[..., :-2], input[..., -2:]
         # X_seq: (B, T, N, C), As: (N, N), Ac: (N, N)
         assert len(input.shape) == 4, 'STC-GNN must take in 4D tensor as input X_seq'
 
