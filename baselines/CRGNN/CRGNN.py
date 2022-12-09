@@ -20,8 +20,12 @@ class CRGNNBlock(nn.Module):
             SpatialMixer(conv_channels, residual_channels, gcn_depth, dropout, propalpha),
             SpatialMixer(conv_channels, residual_channels, gcn_depth, dropout, propalpha)
         ])
-        self.channel_mixer = torch.nn.Conv2d(conv_channels, residual_channels,
-                                             kernel_size=(1, 1), padding=(0, 0), stride=(1, 1), bias=True)
+        self.channel_mixer = nn.Sequential(torch.nn.Conv2d(conv_channels, conv_channels // 2, kernel_size=(1, 1),
+                                                           padding=(0, 0), stride=(1, 1), bias=True),
+                                           nn.GELU(),
+                                           torch.nn.Conv2d(conv_channels // 2, residual_channels, kernel_size=(1, 1),
+                                                           padding=(0, 0), stride=(1, 1), bias=True)
+                                           )
 
         self.temporal_norm = nn.LayerNorm([residual_channels, num_nodes, end_length],
                                           elementwise_affine=self.layer_norm_affine)
@@ -31,7 +35,7 @@ class CRGNNBlock(nn.Module):
     def temporal_layer(self, x):
         h = self.temporal_mixer(x)
         h = h + x[..., -h.shape[-1]:]
-        h = self.temporal_norm(h)  # todo layer norm the last dimension
+        h = self.temporal_norm(h)
         return h
 
     def spatial_layer(self, x, g):
@@ -111,6 +115,7 @@ class CRGNN(nn.Module):
                                                 out_channels=horizon * output_dim,
                                                 kernel_size=(1, 1),
                                                 bias=True))
+        self.end_conv[0].weight[:, skip_channels:].data /= 100  # init
 
     def temporal_layer(self, x, l):
         return self.mixer_layers[l].temporal_layer(x)
