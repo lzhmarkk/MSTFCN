@@ -4,9 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from data.util import StandardScaler
 
-dataset = 'chicago-taxi'
+dataset = 'beijing-bus'
 display_time_lmt = [0, 2 * 24 * 7 * 4]
-selected_variables = [2, 30, 53, 70, 193]
+selected_variables = [2, 30, 53, 70, 103]
 selected_dim = 0
 norm = False
 drop_zero = False
@@ -22,6 +22,7 @@ if __name__ == '__main__':
     # data = rawdata[...]
     data = rawdata[..., selected_dim]
 
+    print(f"n_records {np.sum(rawdata)}")
     print(f"density {np.count_nonzero(data) / data.size}")
 
     # sort = []
@@ -47,5 +48,5 @@ if __name__ == '__main__':
         plt.xticks([2 * 24 * day + 24 for day in range(7 * 4)], [f"day {day}" for day in range(7 * 4)])
         plt.plot(x, y)
 
-        plt.savefig(f"../../saves/plot/{dataset}-{display_time_lmt[0]}-{display_time_lmt[1]}-{i}.png")
+        plt.savefig(f"../../saves/plot/dataset/{dataset}-{display_time_lmt[0]}-{display_time_lmt[1]}-{i}.png")
         plt.show()
