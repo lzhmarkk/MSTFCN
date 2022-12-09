@@ -90,6 +90,10 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['As'] = np.array(df['adjacency_matrix'])
         ret['Ac'] = gen_Ac(np.array(df['raw_data']))
+    elif args.model_name == 'STSHN':
+        from baselines.STSHN.norm_adj import norm_adj
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj'] = norm_adj(np.array(df['adjacency_matrix']))
     return ret
 
 
@@ -166,6 +170,12 @@ def get_model(args):
         model = STCGNN(device=args.device, num_nodes=args.num_nodes, Ks=args.Ks, Kc=args.Kc, input_dim=args.input_dim,
                        output_dim=args.output_dim, hidden_dim=args.hidden_dim, num_layers=args.nn_layers,
                        in_window=args.window, out_horizon=args.horizon, As=args.As, Ac=args.Ac)
+    elif args.model_name == 'STSHN':
+        model = STSHN(device=args.device, input_dim=args.input_dim, output_dim=args.output_dim,
+                      num_nodes=args.num_nodes, window=args.window, horizon=args.horizon,
+                      spatial_layers=args.spatial_layers, temporal_layers=args.temporal_layers,
+                      embed_dim=args.embed_dim, adj=args.adj, heads=args.heads, dropout=args.dropout,
+                      hyper_num=args.hyper_num)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
