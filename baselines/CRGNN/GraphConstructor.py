@@ -35,12 +35,12 @@ class CrossRelationGraphConstructor(nn.Module):
         m1in = torch.tanh(self.alpha * self.mlp_inflow(emb1))
         m2out = torch.tanh(self.alpha * self.mlp_outflow(emb2))
 
-        if self.cross == 3:
+        if self.cross == 2:
             m1out = torch.tanh(self.alpha * self.mlp_outflow(emb1))
             m2in = torch.tanh(self.alpha * self.mlp_inflow(emb2))
             a = torch.mm(m1in, m2out.transpose(1, 0)) - torch.mm(m1out, m2in.transpose(1, 0))
         else:
-            a = torch.mm(m1in, m2out.transpose(1, 0)) - torch.mm(m1in, m2out.transpose(1, 0))
+            a = torch.mm(m1in, m2out.transpose(1, 0)) - torch.mm(m2out, m1in.transpose(1, 0))
 
         adj = torch.relu(torch.tanh(self.alpha * a))
 
