@@ -3,7 +3,7 @@
   "temporal_func": "MLP",
 
   "gcn_depth": 2,
-  "dropout": 0.3,
+  "dropout": 0.0,
   "subgraph_size": 20,
   "node_dim": 40,
   "dilation_exponential": 1,

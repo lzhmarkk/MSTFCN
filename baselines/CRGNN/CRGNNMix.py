@@ -110,7 +110,7 @@ class CRGNNMix(nn.Module):
             for i in range(self.n_mix):
                 # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
                 # x[i] = x[i] + residuals[i][:, :, :, -x[i].size(3):]
-                _out = self.models[i].skip_convs[l](x[i])  # (bs, skp_channel, n_nodes, 1)
+                _out = self.models[i].skip_convs[l](self.dropout(x[i]))  # (bs, skp_channel, n_nodes, 1)
                 output[i] = _out + output[i]
 
         for i in range(self.n_mix):
