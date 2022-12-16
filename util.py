@@ -138,6 +138,16 @@ def get_model(args):
                       conv_channels=args.conv_channels, skip_channels=args.skip_channels,
                       end_channels=args.end_channels,
                       add_time=args.add_time)
+    elif args.model_name == 'MTGNNMix':
+        model = MTGNNMix(device=args.device, num_nodes=args.num_nodes, gcn_depth=args.gcn_depth,
+                         dropout=args.dropout, input_dim=args.input_dim, output_dim=args.output_dim,
+                         window=args.window, horizon=args.horizon, subgraph_size=args.subgraph_size,
+                         node_dim=args.node_dim, tanhalpha=args.tanhalpha, propalpha=args.propalpha,
+                         dilation_exponential=args.dilation_exponential, layers=args.layers,
+                         residual_channels=args.residual_channels,
+                         conv_channels=args.conv_channels, skip_channels=args.skip_channels,
+                         end_channels=args.end_channels,
+                         add_time=args.add_time)
     elif args.model_name == 'FCGAGA':
         model = FCGAGA(device=args.device, n_stacks=args.n_stacks, n_blocks=args.n_blocks,
                        block_layers=args.block_layers, hidden_units=args.hidden_units,
