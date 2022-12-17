@@ -22,14 +22,14 @@ class DilatedInception(nn.Module):
 
 
 class TemporalMixer(nn.Module):
-    def __init__(self, device, temporal_func, residual_channels, conv_channels, dilation, begin_dim, end_dim, dropout):
+    def __init__(self, device, temporal_func, residual_channels, conv_channels, begin_dim, end_dim, dropout):
         super(TemporalMixer, self).__init__()
         self.device = device
         self.temporal_func = temporal_func
 
         if self.temporal_func == 'TCN':
-            self.filter_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=dilation)
-            self.gate_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=dilation)
+            self.filter_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
+            self.gate_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
             self.dropout = nn.Dropout(dropout)
         elif self.temporal_func == 'MLP':
             self.mlp = nn.Sequential(

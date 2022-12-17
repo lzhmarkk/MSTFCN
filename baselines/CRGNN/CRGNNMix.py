@@ -9,7 +9,7 @@ from .TimeEncoder import TimeEncoder
 
 class CRGNNMix(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
-                 window, horizon, subgraph_size, node_dim, tanhalpha, propalpha, dilation_exponential,
+                 window, horizon, subgraph_size, node_dim, tanhalpha, propalpha,
                  layers, residual_channels, conv_channels, skip_channels, end_channels, cross, temporal_func, add_time):
         super(CRGNNMix, self).__init__()
 
@@ -42,7 +42,7 @@ class CRGNNMix(nn.Module):
         for i in range(self.n_mix):
             models.append(CRGNN(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
                                 input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
-                                propalpha=propalpha, dilation_exponential=dilation_exponential, layers=layers,
+                                propalpha=propalpha, layers=layers,
                                 residual_channels=residual_channels, conv_channels=conv_channels,
                                 skip_channels=skip_channels, end_channels=end_channels,
                                 temporal_func=temporal_func, add_time=add_time))
@@ -68,8 +68,7 @@ class CRGNNMix(nn.Module):
 
         graphs = self.graph_constructor()  # (n_mix, n_mix, n_nodes, n_nodes)
 
-        x = x.transpose(3, 1)
-        x = self.pad_sequence(x)  # (bs, mix_in_dim, n_nodes, window)
+        x = x.transpose(3, 1)  # (bs, mix_in_dim, n_nodes, window)
         x = [x[:, p[0]: p[1]] for p in self.in_split]  # (n_mix, bs, in_dim, n_nodes, window)
 
         output = []

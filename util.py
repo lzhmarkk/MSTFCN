@@ -158,8 +158,7 @@ def get_model(args):
                       input_dim=args.input_dim, output_dim=args.output_dim, window=args.window, horizon=args.horizon,
                       subgraph_size=args.subgraph_size, node_dim=args.node_dim, tanhalpha=args.tanhalpha,
                       propalpha=args.propalpha, add_time=args.add_time,
-                      dilation_exponential=args.dilation_exponential, layers=args.layers,
-                      residual_channels=args.residual_channels,
+                      layers=args.layers, residual_channels=args.residual_channels,
                       conv_channels=args.conv_channels, skip_channels=args.skip_channels,
                       end_channels=args.end_channels, cross=args.cross, temporal_func=args.temporal_func)
     elif args.model_name == "STID":
