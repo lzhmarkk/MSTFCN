@@ -81,6 +81,11 @@ def get_auxiliary(args, dataloader):
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         adj_mx = np.array(df['adjacency_matrix'])
         ret['adj_mx'] = get_normalized_adj(adj_mx)
+    elif args.model_name == "STGCNMix":
+        from baselines.STGCN.norm_adj_mx import get_normalized_adj
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        adj_mx = np.array(df['adjacency_matrix'])
+        ret['adj_mx'] = get_normalized_adj(adj_mx)
     elif args.model_name == 'MOHER':
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
@@ -168,7 +173,13 @@ def get_model(args):
                      num_mlp_layers=args.num_mlp_layers, temp_dim_tid=args.temp_dim_tid, temp_dim_diw=args.temp_dim_diw)
     elif args.model_name == 'STGCN':
         model = STGCN(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
-                      output_dim=args.output_dim, window=args.window, horizon=args.horizon)
+                      output_dim=args.output_dim, window=args.window, horizon=args.horizon,
+                      spatial_channels=args.spatial_channels, hidden_channel=args.hidden_channel)
+    elif args.model_name == 'STGCNMix':
+        model = STGCNMix(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
+                         output_dim=args.output_dim, window=args.window, horizon=args.horizon,
+                         spatial_channels=args.spatial_channels, hidden_channel=args.hidden_channel,
+                         add_time=args.add_time)
     elif args.model_name == 'MOHER':
         model = MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
                       horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,

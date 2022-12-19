@@ -94,7 +94,8 @@ class STGCN(nn.Module):
     https://arxiv.org/abs/1709.04875v3 by Yu et al.
     """
 
-    def __init__(self, adj_mx, device, num_nodes, input_dim, output_dim, window, horizon):
+    def __init__(self, adj_mx, device, num_nodes, input_dim, output_dim, window, horizon,
+                 spatial_channels, hidden_channel):
         """
         :param num_nodes: Number of nodes in the graph.
         :param num_features: Number of features at each node in each time step.
@@ -113,12 +114,12 @@ class STGCN(nn.Module):
         num_timesteps_input = window
         num_timesteps_output = horizon
 
-        self.block1 = STGCNBlock(in_channels=num_features, out_channels=64,
-                                 spatial_channels=16, num_nodes=num_nodes)
-        self.block2 = STGCNBlock(in_channels=64, out_channels=64,
-                                 spatial_channels=16, num_nodes=num_nodes)
-        self.last_temporal = TimeBlock(in_channels=64, out_channels=64)
-        self.fully = nn.Linear((num_timesteps_input - 2 * 5) * 64,
+        self.block1 = STGCNBlock(in_channels=num_features, out_channels=hidden_channel,
+                                 spatial_channels=spatial_channels, num_nodes=num_nodes)
+        self.block2 = STGCNBlock(in_channels=hidden_channel, out_channels=hidden_channel,
+                                 spatial_channels=spatial_channels, num_nodes=num_nodes)
+        self.last_temporal = TimeBlock(in_channels=hidden_channel, out_channels=hidden_channel)
+        self.fully = nn.Linear((num_timesteps_input - 2 * 5) * hidden_channel,
                                num_timesteps_output * output_dim)
         self.num_nodes = num_nodes
         self.input_dim = num_features
