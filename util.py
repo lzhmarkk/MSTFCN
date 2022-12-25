@@ -73,15 +73,13 @@ def get_auxiliary(args, dataloader):
     elif args.model_name == 'GWNet':
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
+    elif args.model_name == 'GWNetMix':
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj_mxs'] = [np.array(df['adjacency_matrix'])] * 2
     elif args.model_name == "MTGNN":
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj_mx'] = np.array(df['adjacency_matrix'])
     elif args.model_name == "STGCN":
-        from baselines.STGCN.norm_adj_mx import get_normalized_adj
-        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
-        adj_mx = np.array(df['adjacency_matrix'])
-        ret['adj_mx'] = get_normalized_adj(adj_mx)
-    elif args.model_name == "STGCNMix":
         from baselines.STGCN.norm_adj_mx import get_normalized_adj
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         adj_mx = np.array(df['adjacency_matrix'])
@@ -127,6 +125,13 @@ def get_model(args):
                       nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim, num_nodes=args.num_nodes,
                       kernel_size=args.kernel_size, horizon=args.horizon, window=args.window, dropout=args.dropout,
                       blocks=args.blocks, layers=args.layers, gcn_bool=args.gcn_bool, addaptadj=args.addaptadj)
+    elif args.model_name == 'GWNetMix':
+        model = GWNetMix(adj_mxs=args.adj_mxs, device=args.device, adjtype=args.adjtype, randomadj=args.randomadj,
+                         aptonly=args.aptonly, nhid=args.nhid, input_dim=args.input_dim, output_dim=args.output_dim,
+                         num_nodes=args.num_nodes, kernel_size=args.kernel_size, horizon=args.horizon,
+                         window=args.window, dropout=args.dropout, blocks=args.blocks, layers=args.layers,
+                         add_time=args.add_time, subgraph_size=args.subgraph_size, node_dim=args.node_dim,
+                         tanhalpha=args.tanhalpha)
     elif args.model_name == 'MLPMixer':
         model = MLPMixer(device=args.device, input_dim=args.input_dim, output_dim=args.output_dim, window=args.window,
                          horizon=args.horizon, hidden_dim=args.hidden_dim, dropout=args.dropout,
@@ -175,11 +180,6 @@ def get_model(args):
         model = STGCN(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
                       output_dim=args.output_dim, window=args.window, horizon=args.horizon,
                       spatial_channels=args.spatial_channels, hidden_channel=args.hidden_channel)
-    elif args.model_name == 'STGCNMix':
-        model = STGCNMix(adj_mx=args.adj_mx, device=args.device, num_nodes=args.num_nodes, input_dim=args.input_dim,
-                         output_dim=args.output_dim, window=args.window, horizon=args.horizon,
-                         spatial_channels=args.spatial_channels, hidden_channel=args.hidden_channel,
-                         add_time=args.add_time)
     elif args.model_name == 'MOHER':
         model = MOHER(device=args.device, adj_mx=args.adj_mx, num_nodes=args.num_nodes, window=args.window,
                       horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
