@@ -13,6 +13,7 @@ from .STID.STID import STID
 from .MOHER.MOHER import MOHER
 from .STCGNN.STCGNN import STCGNN
 from .STSHN.STSHN import STSHN
+from .CoGNN.CoGNN import CoGNN
 
 __all__ = [
     "DCRNN",
@@ -29,5 +30,6 @@ __all__ = [
     "STID",
     "MOHER",
     "STCGNN",
-    "STSHN"
+    "STSHN",
+    "CoGNN"
 ]

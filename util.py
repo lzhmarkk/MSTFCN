@@ -97,6 +97,9 @@ def get_auxiliary(args, dataloader):
         from baselines.STSHN.norm_adj import norm_adj
         df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
         ret['adj'] = norm_adj(np.array(df['adjacency_matrix']))
+    elif args.model_name == 'CoGNN':
+        df = h5py.File(os.path.join('./data/h5data', args.data + '.h5'), 'r')
+        ret['adj_mx'] = np.array(df['adjacency_matrix'])
     return ret
 
 
@@ -196,6 +199,14 @@ def get_model(args):
                       spatial_layers=args.spatial_layers, temporal_layers=args.temporal_layers,
                       embed_dim=args.embed_dim, adj=args.adj, heads=args.heads, dropout=args.dropout,
                       hyper_num=args.hyper_num)
+    elif args.model_name == 'CoGNN':
+        model = CoGNN(gcn_true=args.gcn_true, buildA_true=args.buildA_true, gcn_depth=args.gcn_depth,
+                      num_nodes=args.num_nodes, device=args.device, predefined_A=args.adj_mx,
+                      dropout=args.dropout, subgraph_size=args.subgraph_size, node_dim=args.node_dim,
+                      dilation_exponential=args.dilation_exponential, conv_channels=args.conv_channels,
+                      residual_channels=args.residual_channels, skip_channels=args.skip_channels,
+                      end_channels=args.end_channels, window=args.window, horizon=args.horizon, in_dim=args.input_dim,
+                      out_dim=args.output_dim, layers=args.layers, propalpha=args.propalpha, tanhalpha=args.tanhalpha)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
