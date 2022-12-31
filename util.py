@@ -188,11 +188,11 @@ def get_model(args):
                       horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim,
                       gamma=args.gamma, beta=args.beta, subgraph_size=args.subgraph_size, static_feat=args.node_fea,
                       n_heads=args.n_heads, n_layers=args.gcn_depth, hidden_dim=args.node_dim, dropout=args.dropout,
-                      summarize=args.summarize)
+                      summarize=args.summarize, add_time=args.add_time)
     elif args.model_name == 'STCGNN':
         model = STCGNN(device=args.device, num_nodes=args.num_nodes, Ks=args.Ks, Kc=args.Kc, input_dim=args.input_dim,
                        output_dim=args.output_dim, hidden_dim=args.hidden_dim, num_layers=args.nn_layers,
-                       in_window=args.window, out_horizon=args.horizon, As=args.As, Ac=args.Ac)
+                       in_window=args.window, out_horizon=args.horizon, As=args.As, Ac=args.Ac, add_time=args.add_time)
     elif args.model_name == 'STSHN':
         model = STSHN(device=args.device, input_dim=args.input_dim, output_dim=args.output_dim,
                       num_nodes=args.num_nodes, window=args.window, horizon=args.horizon,

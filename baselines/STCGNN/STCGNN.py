@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from .MGPGen import MGP_Gen
+from ..CRGNN.TimeEncoder import TimeEncoder
 
 
 class BDG_Dif(nn.Module):  # 2D graph convolution operation: 1 input
@@ -185,13 +186,14 @@ class STCGNN(nn.Module):
     """
 
     def __init__(self, device, num_nodes, Ks, Kc, input_dim, output_dim, hidden_dim, num_layers, in_window, out_horizon,
-                 As, Ac, use_bias=True, activation=None):
+                 As, Ac, add_time, use_bias=True, activation=None):
         super(STCGNN, self).__init__()
 
         self.device = device
         self.n_mix = len(input_dim)
         num_categories = sum(input_dim)
         assert sum(input_dim) == sum(output_dim) == num_categories
+        self.add_time = add_time
 
         self.mix_graph_pair = MGP_Gen(num_nodes, num_categories, hidden_dim)
         self.encoder = STC_Encoder(num_nodes, num_categories, Ks, Kc, 1, hidden_dim, num_layers, use_bias,
@@ -203,6 +205,10 @@ class STCGNN(nn.Module):
 
         self.As = torch.tensor(As, dtype=torch.float).to(self.device)
         self.Ac = torch.tensor(Ac, dtype=torch.float).to(self.device)
+
+        if self.add_time:
+            self.time_encoder = TimeEncoder(dim=hidden_dim, length=in_window)
+            self.time_conv = nn.Conv2d(3 * hidden_dim, hidden_dim, kernel_size=(1, 1), bias=True)
 
         self.to(device)
 
@@ -217,7 +223,15 @@ class STCGNN(nn.Module):
         _, Ht_lst = self.encoder(Gs=Gs, Gc=Gc, X_seq=X_seq, H0_l=None)
 
         # initiate decoder input
-        deco_input = Ht_lst[-1]  # (B, N, C, h)
+        h = Ht_lst[-1]  # (B, N, C, h)
+        if self.add_time:
+            h = h.permute(0, 3, 1, 2)  # (B, h, N, C)
+            h = [self.time_encoder(h[..., [_]], time) for _ in range(h.shape[-1])]
+            h = torch.cat(h, dim=-1)
+            deco_input = self.time_conv(h).permute(0, 2, 3, 1)
+        else:
+            deco_input = h
+
         # decoding
         outputs = list()
         for t in range(self.decoder.out_horizon):

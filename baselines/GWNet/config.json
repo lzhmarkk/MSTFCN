@@ -7,7 +7,7 @@
   "nhid": 32,
   "kernel_size": 2,
   "dropout": 0.3,
-  "blocks": 8,
+  "blocks": 4,
   "layers": 2,
   "add_time": false
 }

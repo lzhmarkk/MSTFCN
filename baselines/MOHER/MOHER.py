@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from .GraphConstructor import GraphConstructor
 from .CMRGCN import CMRGCN
+from ..CRGNN.TimeEncoder import TimeEncoder
 
 
 class MOHER(nn.Module):
@@ -14,7 +15,7 @@ class MOHER(nn.Module):
     """
 
     def __init__(self, device, adj_mx, num_nodes, window, horizon, input_dim, output_dim, gamma, beta, subgraph_size,
-                 static_feat, n_heads, n_layers, hidden_dim, dropout, summarize):
+                 static_feat, n_heads, n_layers, hidden_dim, dropout, summarize, add_time):
         super(MOHER, self).__init__()
 
         self.adj_mx = adj_mx
@@ -35,6 +36,7 @@ class MOHER(nn.Module):
         self.use_poi_graph = self.static_feat is not None
         self.dropout = dropout
         self.summarize = summarize
+        self.add_time = add_time
 
         _dim = 0
         self.in_split, self.out_split = [], []
@@ -64,9 +66,17 @@ class MOHER(nn.Module):
                                            num_layers=2,
                                            batch_first=True)] * self.n_mix)
 
+        self.predict_conv = nn.ModuleList([nn.Linear(window, horizon, bias=True)] * self.n_mix)
+
         self.end_conv = nn.ModuleList([
-            nn.Conv2d(self.hidden_dim, self.horizon * self.output_dim[i], kernel_size=(1, 1), bias=True)
+            nn.Sequential(
+                nn.Conv2d(self.hidden_dim * (3 if self.add_time else 1), 128, kernel_size=(1, 1), bias=True),
+                nn.ReLU(),
+                nn.Conv2d(128, self.horizon * self.output_dim[i], kernel_size=(1, 1), bias=True))
             for i in range(self.n_mix)])
+
+        if self.add_time:
+            self.time_encoder = TimeEncoder(dim=hidden_dim, length=window)
 
         self.to(self.device)
 
@@ -89,6 +99,7 @@ class MOHER(nn.Module):
             x[i], _ = self.lstm[i](x[i])  # (bs * n_nodes, window, dim)
             x[i] = x[i].sum(dim=1).reshape(bs, self.num_nodes, self.hidden_dim)  # (bs, n_nodes, dim)
             x[i] = x[i].permute(0, 2, 1).unsqueeze(dim=-1)  # (bs, dim, n_nodes, 1)
+            x[i] = self.time_encoder(x[i], time) if self.add_time else x[i]  # (bs, dim, n_nodes, 1)
             x[i] = self.end_conv[i](x[i]).squeeze(dim=-1)  # (bs, horizon * output_dim, n_nodes)
             x[i] = x[i].reshape(bs, self.horizon, self.output_dim[i], self.num_nodes).permute(0, 1, 3, 2)
 
