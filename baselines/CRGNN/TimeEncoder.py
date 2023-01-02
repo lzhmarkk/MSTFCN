@@ -6,8 +6,10 @@ class TimeEncoder(nn.Module):
     def __init__(self, dim, length):
         super(TimeEncoder, self).__init__()
 
-        self.time_day_mlp = nn.Conv2d(dim, dim, kernel_size=(1, length))
-        self.time_week_mlp = nn.Conv2d(dim, dim, kernel_size=(1, length))
+        self.time_day_mlp = nn.Linear(length, 1, bias=True)
+        self.time_week_mlp = nn.Linear(length, 1, bias=True)
+        # self.time_day_mlp = nn.Conv2d(dim, dim, kernel_size=(1, length))
+        # self.time_week_mlp = nn.Conv2d(dim, dim, kernel_size=(1, length))
         self.time_day_emb = nn.Parameter(torch.randn(48, dim))
         self.time_week_emb = nn.Parameter(torch.randn(7, dim))
 

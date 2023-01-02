@@ -13,7 +13,7 @@
   "conv_channels": 32,
   "residual_channels": 32,
   "skip_channels": 64,
-  "end_channels": 128,
+  "end_channels": 256,
 
   "add_time": true
 }

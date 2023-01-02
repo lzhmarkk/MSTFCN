@@ -58,7 +58,7 @@ class CrossRelationGraphConstructor(nn.Module):
         for i, emb1 in enumerate(self.emb):
             adjs_row = []
             for j, emb2 in enumerate(self.emb):
-                if self.cross == 0 and i == j:
+                if self.cross == 0 and i != j:
                     adj = torch.zeros(self.n_nodes, self.n_nodes).to(self.device)
                 else:
                     adj = self.__gen_graph(emb1.weight, emb2.weight)

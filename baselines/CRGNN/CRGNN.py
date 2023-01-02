@@ -27,10 +27,11 @@ class CRGNNBlock(nn.Module):
                                                            padding=(0, 0), stride=(1, 1), bias=True)
                                            )
 
-        self.temporal_norm = nn.LayerNorm([residual_channels, num_nodes, end_length],
+        self.temporal_norm = nn.LayerNorm([num_nodes, end_length],
                                           elementwise_affine=self.layer_norm_affine)
-        self.channel_norm = nn.LayerNorm([residual_channels, num_nodes, end_length],
+        self.channel_norm = nn.LayerNorm([num_nodes, end_length],
                                          elementwise_affine=self.layer_norm_affine)
+        self.end_length = end_length
 
     def temporal_layer(self, x):
         h = self.temporal_mixer(x)

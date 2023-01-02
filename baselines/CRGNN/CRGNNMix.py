@@ -93,7 +93,7 @@ class CRGNNMix(nn.Module):
             for i in range(self.n_mix):
                 h = []
                 for j in range(self.n_mix):
-                    g, w = graphs[i, j], self.cross_weight[i, j]
+                    g, w = graphs[i, j], (self.cross_weight[i, j] if self.cross else 0)
                     if i == j:
                         w = w + 1
                     # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
