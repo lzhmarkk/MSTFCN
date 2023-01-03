@@ -7,5 +7,5 @@
   "dropout": 0.0,
   "subgraph_size": 30,
   "summarize": false,
-  "add_time": false
+  "add_time": true
 }
