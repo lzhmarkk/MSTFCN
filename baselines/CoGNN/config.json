@@ -2,7 +2,7 @@
   "gcn_true": true,
   "buildA_true": true,
   "gcn_depth": 2,
-  "dropout": 0.3,
+  "dropout": 0.1,
   "subgraph_size": 50,
   "node_dim": 16,
   "dilation_exponential": 1,

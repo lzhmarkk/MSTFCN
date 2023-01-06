@@ -77,7 +77,10 @@ class graph_directed_sep_init(nn.Module):
             nodevec1[i] = self.lin1[i](nodevec1[i])
             nodevec2[i] = self.lin2[i](nodevec2[i])
             a = torch.mm(nodevec1[i], nodevec2[i].transpose(1, 0))
+            # if i//n_mod != i%n_mod:
+            #     a=torch.zeros_like(a)
             adj_list.append(a)
+        # assert (adj_list[0]!=0).any() and (adj_list[1]==0).all() and (adj_list[2]==0).all() and (adj_list[3]!=0).any()
         adj_row_list = []
         for i in range(n_mod):
             adj_row_list.append(torch.cat(adj_list[i * n_mod:(i + 1) * n_mod], 1))
