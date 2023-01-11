@@ -29,19 +29,21 @@ class SpatialMixer(nn.Module):
         h = x
         out = [h]
         a = adj / d.view(-1, 1)
-        for i in range(self.gcn_depth):
-            h = self.alpha * x + (1 - self.alpha) * self.nconv(h, a)
-            out.append(h)
-
         if self.gcn_agg_func == 'mlp':
+            for i in range(self.gcn_depth):
+                h = self.alpha * x + (1 - self.alpha) * self.nconv(h, a)
+                out.append(h)
+
             ho = torch.cat(out, dim=1)
             ho = self.mlp(ho)
-        elif self.gcn_agg_func == 'sum':
-            ho = torch.stack(out, dim=0)  # (gdep+1, B, C, N, T)
-            ho = torch.sum(ho, dim=0)
-        elif self.gcn_agg_func == 'mean':
-            ho = torch.stack(out, dim=0)  # (gdep+1, B, C, N, T)
-            ho = torch.mean(ho, dim=0)
+        elif self.gcn_agg_func == 'mean' or self.gcn_agg_func == 'sum':
+            assert self.alpha == 0
+            ap = [torch.eye(len(a)).to(a.device)]
+            for i in range(self.gcn_depth):
+                ap.append(torch.matmul(ap[-1], a))
+            ho = self.nconv(x, torch.stack(ap, 0).sum(0))
+            if self.gcn_agg_func == 'mean':
+                ho = ho / (self.gcn_depth + 1)
         else:
             raise ValueError()
         return ho
