@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..MTGNN.MTGNN import dilated_inception, mixprop, LayerNorm
+from ..CRGNN.GraphConstructor import CrossRelationGraphConstructor
 
 
 class graph_directed_sep_init(nn.Module):
@@ -212,12 +213,18 @@ class CoGNN(nn.Module):
                                    bias=True)
 
         self.idx = torch.arange(self.num_nodes * self.n_mix).to(device)
+        # self.graph_constructor = CrossRelationGraphConstructor(nnodes=num_nodes, k=subgraph_size, dim=node_dim,
+        #                                                        device=device, alpha=tanhalpha, n_mix=self.n_mix,
+        #                                                        cross_relation=True)
+        #
+        # self.cross_weight = nn.Parameter(torch.randn([self.n_mix, self.n_mix]), requires_grad=True)
 
     def forward(self, input, **kwargs):
         input, time = input[..., :-2], input[..., -2:]
         input = [input[..., p[0]: p[1]] for p in self.in_split]  # (B, T, N, C_mix)
         input = torch.cat(input, dim=2)  # (B, T, N_mix, C)
         input = input.transpose(3, 1)
+        # graphs = self.graph_constructor()
 
         seq_len = input.size(3)
         assert seq_len == self.seq_length, 'input sequence length not equal to preset sequence length'
@@ -233,10 +240,29 @@ class CoGNN(nn.Module):
                 else:
                     adp = self.predefined_A
             residual = x
+
+            # hx = []
+            # for _ in range(self.n_mix):
+            #     _h = x[:, :, _ * self.num_nodes:(_ + 1) * self.num_nodes, :]
+            #     hx.append(_h)
+            #
+            # for ii in range(self.n_mix):
+            #     h = 0.
+            #     for j in range(self.n_mix):
+            #         g, w = graphs[ii, j], self.cross_weight[ii, j]
+            #         if ii == j:
+            #             w = w + 1
+            #         _h = self.gconv1[i](hx[j], g) + self.gconv2[i](hx[j], g.transpose(1, 0))
+            #         h = h + _h * w
+            #     hx[ii] = h
+            #
+            # x = torch.cat(hx, dim=2)
+
             if self.gcn_true:
                 x = self.gconv1[i](x, adp) + self.gconv2[i](x, adp.transpose(1, 0))
             else:
                 x = self.residual_convs[i](x)
+
             filter = self.filter_convs[i](x)
             filter = torch.tanh(filter)
             gate = self.gate_convs[i](x)
