@@ -1,8 +1,0 @@
-{
-  "node_dim": 32,
-  "embed_dim": 32,
-  "num_mlp_layers": 3,
-  "temp_dim_tid": 32,
-  "temp_dim_diw": 32,
-  "add_time": true
-}

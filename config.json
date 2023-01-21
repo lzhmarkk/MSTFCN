@@ -1,8 +1,8 @@
 {
-    "model_name": "CRGNN",
+    "model_name": "SimMST",
     "data": "nyc-mix",
-    "device": "cuda:1",
-    "expid": "dual-gcn-emb",
+    "device": "cuda:0",
+    "expid": "YourExpName",
 
     "epochs": 1000,
     "early_stop": true,
