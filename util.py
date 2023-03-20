@@ -114,10 +114,10 @@ def get_model(args):
                     dropout=args.dropout, propalpha=args.propalpha, layer_norm_affline=False,
                     static_feat=args.node_fea)
     elif args.model_name == 'DCRNN':
-        model = DCRNN(adj_mx=args.adj_mx, num_batches=args.num_batches, device=args.device,
+        model = DCRNN(adj_mx=args.adj_mx, device=args.device,
                       max_diffusion_step=args.max_diffusion_step,
-                      cl_decay_steps=args.step_size, filter_type=args.filter_type, num_nodes=args.num_nodes,
-                      num_rnn_layers=args.num_rnn_layers, rnn_units=args.rnn_units, use_curriculum_learning=args.cl,
+                      num_nodes=args.num_nodes,
+                      num_rnn_layers=args.num_rnn_layers, rnn_units=args.rnn_units,
                       input_dim=args.input_dim, window=args.window, output_dim=args.output_dim, horizon=args.horizon)
     elif args.model_name == 'GMAN':
         model = GMAN(SE=args.se, device=args.device, L=args.L, K=args.K, d=args.d, bn_decay=args.bn_decay,

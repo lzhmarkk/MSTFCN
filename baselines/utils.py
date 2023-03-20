@@ -35,7 +35,7 @@ def calculate_random_walk_matrix(adj_mx):
     d_inv = np.power(d, -1).flatten()
     d_inv[np.isinf(d_inv)] = 0.
     d_mat_inv = sp.diags(d_inv)
-    random_walk_mx = d_mat_inv.dot(adj_mx).tocoo()
+    random_walk_mx = d_mat_inv.dot(adj_mx).toarray()
     return random_walk_mx
 
 
