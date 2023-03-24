@@ -31,6 +31,12 @@ class TemporalMixer(nn.Module):
             self.filter_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
             self.gate_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
             self.dropout = nn.Dropout(dropout)
+        elif self.temporal_func == 'GRU':
+            self.gru = nn.GRU(conv_channels, conv_channels, 2, batch_first=True, bidirectional=True)
+        elif self.temporal_func == 'Attention':
+            attn_layer = nn.TransformerEncoderLayer(d_model=residual_channels, nhead=4, dropout=0.,
+                                                    dim_feedforward=2 * residual_channels, batch_first=True)
+            self.attn = nn.TransformerEncoder(encoder_layer=attn_layer, num_layers=4)
         elif self.temporal_func == 'MLP':
             self.mlp = nn.Sequential(
                 nn.Linear(begin_dim, end_dim, bias=True),
@@ -39,13 +45,26 @@ class TemporalMixer(nn.Module):
             )
         else:
             raise ValueError()
+        self.end_dim = end_dim
 
     def forward(self, x):
         if self.temporal_func == 'TCN':
             filter = torch.tanh(self.filter_conv(x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
             gate = torch.sigmoid(self.gate_conv(x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
             x = filter * gate
-            x = self.dropout(x)
+            x = x[..., -self.end_dim:]
+        elif self.temporal_func == 'GRU':
+            B, C, N, T = x.shape
+            x = x.permute(0, 2, 3, 1).reshape(B * N, T, C)  # (B*N, T, C)
+            output, hidden = self.gru(x)
+            x = output.reshape(B, N, T, 2, C)[..., 0, :].permute(0, 3, 1, 2)  # (B, C, N, T)
+            x = x[..., -self.end_dim:]
+        elif self.temporal_func == 'Attention':
+            B, C, N, T = x.shape
+            x = x.permute(0, 2, 3, 1).reshape(B * N, T, C)  # (B*N, T, C)
+            output = self.attn(x)
+            x = output.reshape(B, N, T, C).permute(0, 3, 1, 2)  # (B, C, N, T)
+            x = x[..., -self.end_dim:]
         elif self.temporal_func == 'MLP':
             x = self.mlp(x)
         else:
