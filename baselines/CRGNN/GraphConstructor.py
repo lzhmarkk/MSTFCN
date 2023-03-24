@@ -23,10 +23,14 @@ class CrossRelationGraphConstructor(nn.Module):
         print(f'Use {["no", "mtgnn", "sematic"][cross_relation]} cross relation')
 
         # use different mix emb
-        self.emb = nn.ModuleList([nn.Embedding(self.n_nodes, self.dim)] * self.n_mix)
-        # use mlp to identify mix emb
-        # self.emb2 = nn.Embedding(self.n_nodes, self.dim)
-        # self.emb2_mlp = nn.ModuleList([nn.Sequential(nn.Linear(dim, dim, bias=True)), nn.ReLU()] * self.n_mix)
+        # self.emb = nn.ModuleList()
+        # for _ in range(self.n_mix):
+        #     self.emb.append(nn.Embedding(self.n_nodes, self.dim))
+        # use mlp to identify mix emb, 用这个更好
+        self.emb = nn.Embedding(self.n_nodes, self.dim)
+        self.emb_mlp = nn.ModuleList()
+        for _ in range(self.n_mix):
+            self.emb_mlp.append(nn.Sequential(nn.Linear(dim, dim, bias=True), nn.ReLU()))
 
         self.mlp_inflow = nn.Linear(dim, dim, bias=False)
         self.mlp_outflow = nn.Linear(dim, dim, bias=False)
@@ -55,13 +59,19 @@ class CrossRelationGraphConstructor(nn.Module):
 
     def forward(self):
         adjs = []
-        for i, emb1 in enumerate(self.emb):
+        for i, mlp1 in enumerate(self.emb_mlp):
+            emb1 = mlp1(self.emb.weight)
             adjs_row = []
-            for j, emb2 in enumerate(self.emb):
+            for j, mlp2 in enumerate(self.emb_mlp):
+                emb2 = mlp2(self.emb.weight)
+        # for i, emb1 in enumerate(self.emb):
+        #     adjs_row = []
+        #     for j, emb2 in enumerate(self.emb):
                 if self.cross == 0 and i != j:
                     adj = torch.zeros(self.n_nodes, self.n_nodes).to(self.device)
                 else:
-                    adj = self.__gen_graph(emb1.weight, emb2.weight)
+                    # adj = self.__gen_graph(emb1.weight, emb2.weight)
+                    adj = self.__gen_graph(emb1, emb2)
                 adjs_row.append(adj)  # (n_nodes, n_nodes)
 
             adjs.append(torch.stack(adjs_row, 0))  # (n_mix, n_nodes, n_nodes)
