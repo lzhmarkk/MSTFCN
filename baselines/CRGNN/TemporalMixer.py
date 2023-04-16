@@ -31,6 +31,9 @@ class TemporalMixer(nn.Module):
             self.filter_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
             self.gate_conv = DilatedInception(residual_channels, conv_channels, dilation_factor=1)
             self.dropout = nn.Dropout(dropout)
+        elif self.temporal_func == 'Seasonal':
+            self.complex_weight = nn.Parameter(torch.randn(1, residual_channels, 1, begin_dim // 2 + 1, 2) * 0.02, requires_grad=True)
+            self.complex_bias = nn.Parameter(torch.randn(1, residual_channels, 1, begin_dim // 2 + 1, 2) * 0.01, requires_grad=True)
         elif self.temporal_func == 'GRU':
             self.gru = nn.GRU(conv_channels, conv_channels, 2, batch_first=True, bidirectional=True)
         elif self.temporal_func == 'Attention':
@@ -53,6 +56,12 @@ class TemporalMixer(nn.Module):
             gate = torch.sigmoid(self.gate_conv(x))  # (bs, 32, n_nodes, recep_filed + (1 - max_ker_size) * i)
             x = filter * gate
             x = x[..., -self.end_dim:]
+        elif self.temporal_func == 'Seasonal':
+            x = torch.fft.rfft(x, dim=3, norm='ortho')
+            weight = torch.view_as_complex(self.complex_weight)
+            bias = torch.view_as_complex(self.complex_bias)
+            x = x * weight + bias
+            x = torch.fft.irfft(x, n=self.end_dim, dim=3, norm='ortho')  # (B, C, N, T)
         elif self.temporal_func == 'GRU':
             B, C, N, T = x.shape
             x = x.permute(0, 2, 3, 1).reshape(B * N, T, C)  # (B*N, T, C)
