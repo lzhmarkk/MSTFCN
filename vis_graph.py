@@ -2,10 +2,11 @@ import torch
 import matplotlib.pyplot as plt
 
 dataset = 'nyc-mix'
-name = 'oneEmb0'
+name = 'sensitivity-base1'
 gcn_depth = 3
 if __name__ == '__main__':
-    model = torch.load(open(f"./saves/{dataset}/CRGNN/{name}/best-model.pt", "rb"))
+    model = torch.load(open(f"./saves/{dataset}/CRGNN/{name}/best-model.pt", "rb"), map_location='cpu')
+    model.graph_constructor.device = torch.device('cpu')
     graphs = model.graph_constructor().detach().cpu()
 
     fig = plt.figure(figsize=(20, 20))
@@ -17,7 +18,7 @@ if __name__ == '__main__':
             g = graphs[i, j]
             ax = axs[i, j]
 
-            adj = g #+ torch.eye(g.size(0))
+            adj = g  # + torch.eye(g.size(0))
             d = adj.sum(1)
             a = adj / d.view(-1, 1)
 
@@ -33,5 +34,5 @@ if __name__ == '__main__':
             cbar = fig.colorbar(im, ax=ax, orientation='horizontal', location='top')
 
     fig.tight_layout()
-    plt.savefig(f"./ExpGraph_{dataset}_{name}.png", dpi=300)
+    plt.savefig(f"./saves/plot/ExpGraph_{dataset}_{name}.png", dpi=300)
     plt.show()
