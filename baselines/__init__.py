@@ -14,6 +14,7 @@ from .MOHER.MOHER import MOHER
 from .STCGNN.STCGNN import STCGNN
 from .STSHN.STSHN import STSHN
 from .CoGNN.CoGNN import CoGNN
+from .FTMST.FTMST import FTMST
 
 __all__ = [
     "DCRNN",
@@ -31,5 +32,6 @@ __all__ = [
     "MOHER",
     "STCGNN",
     "STSHN",
-    "CoGNN"
+    "CoGNN",
+    "FTMST"
 ]

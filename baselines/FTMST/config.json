@@ -1,0 +1,7 @@
+{
+  "channels": 32,
+  "hidden": 32,
+  "num_layers": 3,
+  "dropout": 0.1,
+  "add_time": true
+}

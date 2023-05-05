@@ -1,13 +1,13 @@
 {
-    "model_name": "CRGNN",
-    "data": "nyc-mix",
-    "device": "cuda:1",
-    "expid": "dual-gcn-emb",
+    "model_name": "FTMST",
+    "data": "nyc-taxi",
+    "device": "cuda:0",
+    "expid": "test",
 
     "epochs": 1000,
     "early_stop": true,
     "early_stop_steps": 100,
-    "runs": 2,
+    "runs": 1,
 
     "window": 12,
     "horizon": 12,

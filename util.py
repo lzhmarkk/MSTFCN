@@ -207,6 +207,9 @@ def get_model(args):
                       residual_channels=args.residual_channels, skip_channels=args.skip_channels,
                       end_channels=args.end_channels, window=args.window, horizon=args.horizon, in_dim=args.input_dim,
                       out_dim=args.output_dim, layers=args.layers, propalpha=args.propalpha, tanhalpha=args.tanhalpha)
+    elif args.model_name == 'FTMST':
+        model = FTMST(n_dim=args.channels, n_layer=args.num_layers, n_nodes=args.num_nodes, input_dim=args.input_dim, output_dim=args.output_dim,
+                      window=args.window, horizon=args.horizon, dropout=args.dropout, add_time=args.add_time)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
