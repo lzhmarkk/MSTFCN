@@ -180,12 +180,20 @@ if __name__ == "__main__":
     print('valid\tMAE\tRMSE\tCORR')
     print('mean:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.mean(vmae), np.mean(vrmse), np.mean(vcorr)))
     print('std:\t{:.4f}\t{:.4f}\t{:.4f}'.format(np.std(vmae), np.std(vrmse), np.std(vcorr)))
-    print('\n\n')
+    print("\n" + "-" * 30)
     # test data
-    print('test|horizon\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std')
+    print('test|horizon', end='')
     for i in [2, 5, 11]:
-        print('{:d}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}'
-              .format(i + 1, mmae[i], mrmse[i], mcorr[i], smae[i], srmse[i], scorr[i]))
-    print('test|All\tMAE-mean\tRMSE-mean\tCORR-mean\tMAE-std\tRMSE-std\tcorr-std'
-          .format(0, np.mean(amae, 0), np.mean(armse, 0), np.mean(acorr, 0), np.std(amae, 0), np.std(armse, 0),
-                  np.std(acorr, 0)))
+        print(f'\tMAE{i + 1}-mean\tRMSE{i + 1}-mean\tCORR{i + 1}-mean', end='')
+    print("\n\t\t", end='')
+    for i in [2, 5, 11]:
+        print('{:.4f}\t{:.4f}\t{:.4f}\t'.format(mmae[i], mrmse[i], mcorr[i]), end='')
+    print("\n")
+
+    print("\t", end='')
+    for i in [2, 5, 11]:
+        print(f'\tMAE{i + 1}-std\tRMSE{i + 1}-std\tCORR3{i + 1}-std', end='')
+    print("\n\t\t", end='')
+    for i in [2, 5, 11]:
+        print('{:.4f}\t{:.4f}\t{:.4f}\t'.format(smae[i], srmse[i], scorr[i]), end='')
+    print("\n" + "-" * 30)
