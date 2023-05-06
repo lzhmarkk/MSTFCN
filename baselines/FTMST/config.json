@@ -1,4 +1,6 @@
 {
+  "temporal_func": "FC",
+  "spatial_func": "None",
   "channels": 32,
   "hidden": 32,
   "num_layers": 3,

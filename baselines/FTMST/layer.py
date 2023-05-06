@@ -5,24 +5,38 @@ from baselines.MTGNN.MTGNN import dilated_inception
 
 
 class FTLayer(nn.Module):
-    def __init__(self, n_dim, n_nodes, start_length, end_length, dropout):
+    def __init__(self, n_dim, n_nodes, start_length, end_length, temporal_func, spatial_func, dropout):
         super().__init__()
 
         self.n_dim = n_dim
         self.n_nodes = n_nodes
         self.start_length = start_length
         self.end_length = end_length
+        self.temporal_func = temporal_func
+        self.spatial_func = spatial_func
         self.dropout = nn.Dropout(dropout)
 
         # temporal
-        self.complex_weight = nn.Parameter(torch.randn(1, n_dim, 1, start_length // 2 + 1, 2) * 0.02, requires_grad=True)
-        self.complex_bias = nn.Parameter(torch.randn(1, n_dim, 1, start_length // 2 + 1, 2) * 0.01, requires_grad=True)
-        self.t_fc = nn.Linear(start_length, end_length, bias=True)
-        self.t_mlp = nn.Sequential(nn.Linear(start_length, end_length),
-                                   nn.GELU(),
-                                   nn.Linear(end_length, end_length))
-        self.filter_convs = dilated_inception(n_dim, n_dim, dilation_factor=1)
-        self.gate_convs = dilated_inception(n_dim, n_dim, dilation_factor=1)
+        if temporal_func == 'FC':
+            self.t_fc = nn.Linear(start_length, end_length)
+        elif temporal_func == 'MLP':
+            self.t_mlp = nn.Sequential(nn.Linear(start_length, end_length),
+                                       nn.GELU(),
+                                       nn.Linear(end_length, end_length))
+        elif temporal_func == 'TCN':
+            self.filter_convs = dilated_inception(n_dim, n_dim, dilation_factor=1)
+            self.gate_convs = dilated_inception(n_dim, n_dim, dilation_factor=1)
+        elif temporal_func == 'FFT':
+            self.n_fft = 1  # relu between mlp if 2
+            self.weight = nn.Parameter(torch.randn((n_dim, n_dim, start_length // 2 + 1), dtype=torch.cfloat))
+            self.bias = nn.Parameter(torch.randn((1, n_dim, 1, start_length // 2 + 1), dtype=torch.cfloat))
+            if self.n_fft == 2:
+                self.weight2 = nn.Parameter(torch.randn((n_dim, n_dim, start_length // 2 + 1), dtype=torch.cfloat))
+                self.bias2 = nn.Parameter(torch.randn((1, n_dim, 1, start_length // 2 + 1), dtype=torch.cfloat))
+            # nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+            # fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            # bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            # nn.init.uniform_(self.bias, -bound, bound)
 
         # spatial
         pass
@@ -32,36 +46,37 @@ class FTLayer(nn.Module):
 
         self.ln = nn.LayerNorm([n_dim, n_nodes, end_length], elementwise_affine=True)
 
-    def fft(self, x):
-        x = torch.fft.rfft(x, dim=3, norm='ortho')
-        return x
-
-    def ifft(self, x):
-        x = torch.fft.irfft(x, n=self.end_length, dim=3, norm='ortho')
-        return x
-
     def norm(self, x):
         return self.ln(x)
 
     def forward(self, x):
-        # filter = self.filter_convs(x)
-        # filter = torch.tanh(filter)
-        # gate = self.gate_convs(x)
-        # gate = torch.sigmoid(gate)
-        # x = filter * gate
-        x = self.t_mlp(x)
-
         # (B, C, N, T)
         # temporal
-        # x = self.fft(x)
-        # weight = torch.view_as_complex(self.complex_weight)
-        # bias = torch.view_as_complex(self.complex_bias)
-        # x = x * weight + bias
+        if self.temporal_func == 'FC':
+            x = torch.tanh(self.t_fc(x))
+        elif self.temporal_func == 'MLP':
+            x = torch.tanh(self.t_mlp(x))
+        elif self.temporal_func == 'TCN':
+            filter = torch.tanh(self.filter_convs(x))
+            gate = torch.sigmoid(self.gate_convs(x))
+            x = filter * gate
+        elif self.temporal_func == 'FFT':
+            x = torch.fft.rfft(x, dim=3, norm='ortho')
+            x = torch.einsum('bint,iot->bont', x, self.weight)
+            x = x + self.bias
+            if self.n_fft == 2:
+                x = torch.relu(x.real) + 1.j * torch.relu(x.imag)
+                x = torch.einsum('bint,iot->bont', x, self.weight2)
+                x = x + self.bias2
+        else:
+            pass
 
         # spatial
         # g = torch.matmul(self.s_emb.weight, self.s_emb.weight.transpose(1, 0))
         # g = torch.exp(3 * g)
         # x = torch.einsum('bcnt, nm->bcmt', x, g)
 
-        # x = self.ifft(x)
+        if self.temporal_func == 'FFT':
+            x = torch.fft.irfft(x, n=self.end_length, dim=3, norm='ortho')
+            x = torch.tanh(x)
         return x

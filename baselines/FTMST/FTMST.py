@@ -5,7 +5,8 @@ from .layer import FTLayer
 
 
 class FTMST(nn.Module):
-    def __init__(self, n_dim, n_layer, n_nodes, input_dim, output_dim, window, horizon, dropout, add_time):
+    def __init__(self, n_dim, n_layer, n_nodes, input_dim, output_dim, window, horizon,
+                 temporal_func, spatial_func, dropout, add_time):
         super().__init__()
 
         if not isinstance(input_dim, list):
@@ -20,6 +21,10 @@ class FTMST(nn.Module):
         self.window = window
         self.horizon = horizon
         self.n_nodes = n_nodes
+        self.temporal_func = temporal_func
+        self.spatial_func = spatial_func
+        self.dropout = nn.Dropout(p=dropout)
+        self.handle_seq_length()
 
         _dim = 0
         self.in_split, self.out_split = [], []
@@ -31,8 +36,6 @@ class FTMST(nn.Module):
             self.out_split.append((_dim, _dim + d))
             _dim += d
 
-        self.dropout = nn.Dropout(p=dropout)
-
         self.init_conv = nn.ModuleList()
         self.out_conv = nn.ModuleList()
         self.layers = nn.ModuleList()
@@ -43,12 +46,11 @@ class FTMST(nn.Module):
             out_conv_mode = nn.ModuleList()
             layers_mode = nn.ModuleList()
 
-            out_conv_mode.append(nn.Conv2d(n_dim, n_dim, kernel_size=(1, window), bias=True))
+            out_conv_mode.append(nn.Conv2d(n_dim, n_dim, kernel_size=(1, self.start_length[0]), bias=True))
             for l in range(self.n_layer):
-                start_length = window - window // n_layer * l
-                end_length = max(window - window // n_layer * (l + 1), 1)
-                out_conv_mode.append(nn.Conv2d(n_dim, n_dim, kernel_size=(1, end_length), bias=True))
-                layers_mode.append(FTLayer(n_dim, n_nodes, start_length, end_length, dropout))
+                out_conv_mode.append(nn.Conv2d(n_dim, n_dim, kernel_size=(1, self.end_length[l]), bias=True))
+                layers_mode.append(FTLayer(n_dim, n_nodes, self.start_length[l], self.end_length[l],
+                                           temporal_func, spatial_func, dropout))
 
             self.out_conv.append(out_conv_mode)
             self.layers.append(layers_mode)
@@ -58,6 +60,19 @@ class FTMST(nn.Module):
                                                 nn.LeakyReLU(),
                                                 nn.Conv2d(4 * n_dim, horizon * output_dim[i], kernel_size=(1, 1), bias=True)))
 
+    def handle_seq_length(self):
+        self.start_length, self.end_length = [], []
+        for l in range(self.n_layer):
+            if self.temporal_func == 'TCN':
+                self.start_length.append((self.n_layer - l) * 6 + 1)
+                self.end_length.append((self.n_layer - l) * 6 - 5)
+            elif self.temporal_func in ['MLP', 'FC', 'FFT']:
+                self.start_length.append(self.window - self.window // self.n_layer * l)
+                self.end_length.append(max(self.window - self.window // self.n_layer * (l + 1), 1))
+            else:
+                self.start_length.append(self.window)
+                self.end_length.append(self.window)
+
     def forward(self, input, **kwargs):
         if self.add_time:
             x, time = input[..., :-2], input[..., -2:]
@@ -65,10 +80,9 @@ class FTMST(nn.Module):
             x = input
 
         x = x.transpose(3, 1)  # (B, M*C, N, T)
+        x = fn.pad(x, [self.start_length[0] - x.shape[-1], 0])
         x = [x[:, p[0]: p[1]] for p in self.in_split]  # (M, B, C, N, T)
-        # x[0] = fn.pad(x[0], [7, 0])
 
-        # todo add your model here
         outputs = []
 
         for m in range(self.n_mix):
@@ -95,7 +109,6 @@ class FTMST(nn.Module):
             outputs[m] = self.agg_conv[m](outputs[m])
 
         # output
-        # todo skip e
         for m in range(self.n_mix):
             outputs[m] = fn.leaky_relu(outputs[m])
             h = self.pred_conv[m](outputs[m])  # (B, T*C, N, 1)
