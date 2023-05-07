@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as fn
 from .layer import FTLayer
+from .graph import GraphConstructor
 
 
 class FTMST(nn.Module):
     def __init__(self, n_dim, n_layer, n_nodes, input_dim, output_dim, window, horizon,
-                 temporal_func, spatial_func, dropout, add_time):
+                 temporal_func, spatial_func, top_k, dropout, add_time):
         super().__init__()
 
         if not isinstance(input_dim, list):
@@ -60,6 +61,8 @@ class FTMST(nn.Module):
                                                 nn.LeakyReLU(),
                                                 nn.Conv2d(4 * n_dim, horizon * output_dim[i], kernel_size=(1, 1), bias=True)))
 
+        self.gc = GraphConstructor(n_dim, n_nodes, top_k, dropout, spatial_func)
+
     def handle_seq_length(self):
         self.start_length, self.end_length = [], []
         for l in range(self.n_layer):
@@ -84,6 +87,7 @@ class FTMST(nn.Module):
         x = [x[:, p[0]: p[1]] for p in self.in_split]  # (M, B, C, N, T)
 
         outputs = []
+        g = self.gc()
 
         for m in range(self.n_mix):
             x[m] = self.init_conv[m](x[m])
@@ -94,7 +98,7 @@ class FTMST(nn.Module):
         for m in range(self.n_mix):
             for l in range(self.n_layer):
                 residual = x[m]
-                h = self.layers[m][l](x[m])  # (B, C, N, T)
+                h = self.layers[m][l](x[m], g)  # (B, C, N, T)
 
                 # residual
                 h = h + residual[..., -h.shape[-1]:]

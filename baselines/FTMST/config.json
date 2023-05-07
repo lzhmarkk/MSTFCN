@@ -1,9 +1,10 @@
 {
-  "temporal_func": "FC",
-  "spatial_func": "None",
+  "temporal_func": "FFT",
+  "spatial_func": "GCN",
   "channels": 32,
   "hidden": 32,
   "num_layers": 3,
   "dropout": 0.1,
+  "top_k": 30,
   "add_time": true
 }
