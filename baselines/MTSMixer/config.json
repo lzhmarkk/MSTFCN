@@ -1,0 +1,11 @@
+{
+  "n_layers": 3,
+  "d_model": 128,
+  "d_ff": 64,
+  "fac_T": true,
+  "fac_C": true,
+  "sampling": 2,
+  "norm": true,
+  "individual": false,
+  "add_time": false
+}

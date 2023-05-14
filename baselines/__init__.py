@@ -15,6 +15,7 @@ from .STCGNN.STCGNN import STCGNN
 from .STSHN.STSHN import STSHN
 from .CoGNN.CoGNN import CoGNN
 from .FTMST.FTMST import FTMST
+from .MTSMixer.MTSMixer import MTSMixer
 
 __all__ = [
     "DCRNN",
@@ -33,5 +34,6 @@ __all__ = [
     "STCGNN",
     "STSHN",
     "CoGNN",
-    "FTMST"
+    "FTMST",
+    "MTSMixer"
 ]
