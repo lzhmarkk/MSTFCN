@@ -1,6 +1,8 @@
 {
   "temporal_func": "FFT",
+  "frequency_func": "FC",
   "spatial_func": "GCN",
+  "channel_func": "FFN",
   "channels": 32,
   "hidden": 32,
   "num_layers": 3,

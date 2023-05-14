@@ -7,7 +7,7 @@ from .graph import GraphConstructor
 
 class FTMST(nn.Module):
     def __init__(self, n_dim, n_layer, n_nodes, input_dim, output_dim, window, horizon,
-                 temporal_func, spatial_func, top_k, dropout, add_time):
+                 temporal_func, frequency_func, spatial_func, channel_func, top_k, dropout, add_time):
         super().__init__()
 
         if not isinstance(input_dim, list):
@@ -51,7 +51,7 @@ class FTMST(nn.Module):
             for l in range(self.n_layer):
                 out_conv_mode.append(nn.Conv2d(n_dim, n_dim, kernel_size=(1, self.end_length[l]), bias=True))
                 layers_mode.append(FTLayer(n_dim, n_nodes, self.start_length[l], self.end_length[l],
-                                           temporal_func, spatial_func, dropout))
+                                           temporal_func, frequency_func, spatial_func, channel_func, dropout))
 
             self.out_conv.append(out_conv_mode)
             self.layers.append(layers_mode)
@@ -97,12 +97,7 @@ class FTMST(nn.Module):
 
         for m in range(self.n_mix):
             for l in range(self.n_layer):
-                residual = x[m]
                 h = self.layers[m][l](x[m], g)  # (B, C, N, T)
-
-                # residual
-                h = h + residual[..., -h.shape[-1]:]
-                h = self.layers[m][l].norm(h)
 
                 x[m] = h
                 _h = self.out_conv[m][l + 1](h)
