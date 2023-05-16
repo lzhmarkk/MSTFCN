@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as fn
 from .layer import FTLayer
 from .graph import GraphConstructor
+from baselines.CRGNN.TimeEncoder import TimeEncoder
 
 
 class FTMST(nn.Module):
@@ -25,6 +26,7 @@ class FTMST(nn.Module):
         self.temporal_func = temporal_func
         self.spatial_func = spatial_func
         self.dropout = nn.Dropout(p=dropout)
+        self.add_time = add_time
         self.handle_seq_length()
 
         _dim = 0
@@ -57,11 +59,14 @@ class FTMST(nn.Module):
             self.layers.append(layers_mode)
 
             self.agg_conv.append(nn.Conv2d(n_dim * (self.n_layer + 1), n_dim, kernel_size=(1, 1), bias=True))
-            self.pred_conv.append(nn.Sequential(nn.Conv2d(n_dim, 4 * n_dim, kernel_size=(1, 1), bias=True),
+            self.pred_conv.append(nn.Sequential(nn.Conv2d(n_dim * (3 if add_time else 1), 4 * n_dim, kernel_size=(1, 1), bias=True),
                                                 nn.LeakyReLU(),
                                                 nn.Conv2d(4 * n_dim, horizon * output_dim[i], kernel_size=(1, 1), bias=True)))
 
         self.gc = GraphConstructor(n_dim, n_nodes, top_k, dropout, spatial_func)
+
+        if self.add_time:
+            self.time_encoder = TimeEncoder(dim=n_dim, length=window)
 
     def handle_seq_length(self):
         self.start_length, self.end_length = [], []
@@ -110,6 +115,8 @@ class FTMST(nn.Module):
         # output
         for m in range(self.n_mix):
             outputs[m] = fn.leaky_relu(outputs[m])
+            outputs[m] = self.time_encoder(outputs[m], time) if self.add_time else outputs[m]
+
             h = self.pred_conv[m](outputs[m])  # (B, T*C, N, 1)
             outputs[m] = h.reshape(-1, self.horizon, self.output_dim[m], self.n_nodes).transpose(3, 2)
 

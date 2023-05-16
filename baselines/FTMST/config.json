@@ -6,7 +6,7 @@
   "channels": 32,
   "hidden": 32,
   "num_layers": 3,
-  "dropout": 0.1,
+  "dropout": 0.0,
   "top_k": 30,
   "add_time": true
 }
