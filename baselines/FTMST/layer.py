@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as fn
 from baselines.MTGNN.MTGNN import dilated_inception
+from baselines.MTGNN.MTGNN import mixprop
 
 
 class FTLayer(nn.Module):
@@ -38,13 +39,8 @@ class FTLayer(nn.Module):
             self.temporal_bias2 = nn.Parameter(torch.randn((1, n_dim, 1, start_length // 2 + 1), dtype=torch.cfloat))
 
         # spatial
-        if spatial_func == 'Mul':  # todo fft graph
-            self.s_emb = nn.Embedding(n_nodes, n_dim)
-            nn.init.xavier_uniform_(self.s_emb.weight)
-        elif spatial_func == 'GCN':
-            from baselines.MTGNN.MTGNN import mixprop
-            self.gconv1 = mixprop(n_dim, n_dim, 3, dropout, 0.05)
-            self.gconv2 = mixprop(n_dim, n_dim, 3, dropout, 0.05)
+        self.gconv1 = mixprop(n_dim, n_dim, 1, dropout, 0.00)
+        self.gconv2 = mixprop(n_dim, n_dim, 1, dropout, 0.00)
 
         # frequency
         if frequency_func == 'FC':
@@ -115,26 +111,16 @@ class FTLayer(nn.Module):
         x = x + res
         return x
 
-    def spatial_mixing(self, x, g):
+    def spatial_mixing(self, x, g):  # todo dynamic graph
         res = x
 
-        if self.spatial_func == 'Mul':
-            if torch.is_complex(x):
-                real = torch.einsum('bcnt, nm->bcmt', x.real, g)
-                imag = torch.einsum('bcnt, nm->bcmt', x.imag, g)
-                x = real + 1.j * imag
-            else:
-                x = torch.einsum('bcnt, nm->bcmt', x, g)
+        if torch.is_complex(x):
+            real = self.gconv1(x.real, g[0]) + self.gconv2(x.real, g[0].transpose(1, 0))
+            imag = self.gconv1(x.imag, g[1]) + self.gconv2(x.imag, g[1].transpose(1, 0))
+            x = fn.tanh(real) + 1.j * fn.tanh(imag)
 
-        elif self.spatial_func == 'GCN':
-            if torch.is_complex(x):
-                real = self.gconv1(x.real, g) + self.gconv2(x.real, g.transpose(1, 0))
-                imag = self.gconv1(x.imag, g) + self.gconv2(x.imag, g.transpose(1, 0))
-                x = real + 1.j * imag
-            else:
-                x = self.gconv1(x, g) + self.gconv2(x, g.transpose(1, 0))
         else:
-            x = torch.zeros_like(x)
+            x = self.gconv1(x, g) + self.gconv2(x, g.transpose(1, 0))
 
         x = x + res
         return x
