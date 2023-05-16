@@ -49,8 +49,8 @@ class GraphConstructor(nn.Module):
 
     def forward(self):
         if self.spatial_func == 'W':
-            g1 = self.w1
-            g2 = self.w2
+            g1 = self.w1 + torch.eye(self.n_nodes, device=self.w1.device)
+            g2 = self.w2 + torch.eye(self.n_nodes, device=self.w2.device)
             g = [fn.relu(fn.tanh(g1)), fn.relu(fn.tanh(g2))]
         elif self.spatial_func == 'EE':
             g1 = torch.mm(self.emb1.weight, self.emb1.weight.transpose(1, 0))
