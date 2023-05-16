@@ -167,3 +167,10 @@ class FTLayer(nn.Module):
         # x = x + self.res_conv(residual[..., -self.end_length:])
         x = self.ln(x)
         return x
+
+    def extra_repr(self):
+        extra_lines = ""
+        for name, param in self.named_parameters(recurse=False):
+            if isinstance(param, nn.Parameter):
+                extra_lines += f"({name}): Parameter({list(param.shape)}, requires_grad={param.requires_grad})\n"
+        return extra_lines
