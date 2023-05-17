@@ -43,13 +43,16 @@ class FTLayer(nn.Module):
         self.gconv2 = mixprop(n_dim, n_dim, 1, dropout, 0.00)
 
         # frequency
-        if frequency_func == 'FC':
+        if frequency_func == 'W':
+            self.frequency_weight = nn.Parameter(torch.randn((1, n_dim, 1, start_length // 2 + 1), dtype=torch.cfloat))
+            self.frequency_bias = nn.Parameter(torch.randn((1, 1, 1, start_length // 2 + 1), dtype=torch.cfloat))
+        elif frequency_func == 'FC':
             self.frequency_weight = nn.Parameter(torch.randn((n_dim, start_length // 2 + 1, start_length // 2 + 1), dtype=torch.cfloat))
             self.frequency_bias = nn.Parameter(torch.randn((1, 1, 1, start_length // 2 + 1), dtype=torch.cfloat))
         elif frequency_func == 'FFN':
-            self.frequency_weight1 = nn.Parameter(torch.randn((n_dim, start_length // 2 + 1, start_length), dtype=torch.cfloat))
-            self.frequency_bias1 = nn.Parameter(torch.randn((1, 1, 1, start_length), dtype=torch.cfloat))
-            self.frequency_weight2 = nn.Parameter(torch.randn((n_dim, start_length, start_length // 2 + 1), dtype=torch.cfloat))
+            self.frequency_weight1 = nn.Parameter(torch.randn((n_dim, start_length // 2 + 1, start_length // 2 + 1), dtype=torch.cfloat))
+            self.frequency_bias1 = nn.Parameter(torch.randn((1, 1, 1, start_length // 2 + 1), dtype=torch.cfloat))
+            self.frequency_weight2 = nn.Parameter(torch.randn((n_dim, start_length // 2 + 1, start_length // 2 + 1), dtype=torch.cfloat))
             self.frequency_bias2 = nn.Parameter(torch.randn((1, 1, 1, start_length // 2 + 1), dtype=torch.cfloat))
 
         # channel
@@ -93,8 +96,11 @@ class FTLayer(nn.Module):
 
     def frequency_mixing(self, x):
         res = x
-
-        if self.frequency_func == 'FC':
+        if self.frequency_func == 'W':
+            assert torch.is_complex(x)
+            x = x * self.frequency_weight
+            x = x + self.frequency_bias
+        elif self.frequency_func == 'FC':
             assert torch.is_complex(x)
             x = torch.einsum('bcnt,ctf->bcnf', x, self.frequency_weight)
             x = x + self.frequency_bias
@@ -102,7 +108,7 @@ class FTLayer(nn.Module):
             assert torch.is_complex(x)
             x = torch.einsum('bcnt,ctf->bcnf', x, self.frequency_weight1)
             x = x + self.frequency_bias1
-            x = fn.gelu(x.real) + 1.j * fn.gelu(x.imag)
+            x = fn.tanh(x.real) + 1.j * fn.tanh(x.imag)
             x = torch.einsum('bcnt,ctf->bcnf', x, self.frequency_weight2)
             x = x + self.frequency_bias2
         else:
