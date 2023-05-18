@@ -216,6 +216,9 @@ def get_model(args):
         model = MTSMixer(seq_len=args.window, pred_len=args.horizon, n_layers=args.n_layers, n_nodes=args.num_nodes,
                          d_model=args.d_model, d_ff=args.d_ff, fac_T=args.fac_T, fac_C=args.fac_C,
                          sampling=args.sampling, norm=args.norm, individual=args.individual)
+    elif args.model_name == 'FFTLinear':
+        model = FFTLinear(n_dim=args.n_dim, n_hidden=args.n_hidden, n_nodes=args.num_nodes, window=args.window,
+                          horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim, add_time=args.add_time)
     elif args.model_name == 'DLinear':
         model = DLinear(kernel_size=args.kernel_size, seq_len=args.window, pred_len=args.horizon,
                         individual=args.individual, n_nodes=args.num_nodes)

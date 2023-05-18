@@ -16,6 +16,7 @@ from .STSHN.STSHN import STSHN
 from .CoGNN.CoGNN import CoGNN
 from .FTMST.FTMST import FTMST
 from .MTSMixer.MTSMixer import MTSMixer
+from .FFTLinear.FFTLinear import FFTLinear
 from .DLinear.DLinear import DLinear
 
 __all__ = [
@@ -37,5 +38,6 @@ __all__ = [
     "CoGNN",
     "FTMST",
     "MTSMixer",
+    "FFTLinear",
     "DLinear"
 ]
