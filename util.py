@@ -216,6 +216,9 @@ def get_model(args):
         model = MTSMixer(seq_len=args.window, pred_len=args.horizon, n_layers=args.n_layers, n_nodes=args.num_nodes,
                          d_model=args.d_model, d_ff=args.d_ff, fac_T=args.fac_T, fac_C=args.fac_C,
                          sampling=args.sampling, norm=args.norm, individual=args.individual)
+    elif args.model_name == 'DLinear':
+        model = DLinear(kernel_size=args.kernel_size, seq_len=args.window, pred_len=args.horizon,
+                        individual=args.individual, n_nodes=args.num_nodes)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model
