@@ -1,5 +1,5 @@
 {
-  "kernel_size": 5,
-  "individual": true,
+  "kernel_size": 13,
+  "individual": false,
   "add_time": false
 }

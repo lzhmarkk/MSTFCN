@@ -221,7 +221,7 @@ def get_model(args):
                           horizon=args.horizon, input_dim=args.input_dim, output_dim=args.output_dim, add_time=args.add_time)
     elif args.model_name == 'DLinear':
         model = DLinear(kernel_size=args.kernel_size, seq_len=args.window, pred_len=args.horizon,
-                        individual=args.individual, n_nodes=args.num_nodes)
+                        individual=args.individual, n_nodes=args.num_nodes, input_dim=args.input_dim)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model

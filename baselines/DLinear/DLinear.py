@@ -10,15 +10,15 @@ class moving_avg(nn.Module):
     def __init__(self, kernel_size, stride):
         super(moving_avg, self).__init__()
         self.kernel_size = kernel_size
-        self.avg = nn.AvgPool2d(kernel_size=(1, kernel_size), stride=stride, padding=0)
+        self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
 
     def forward(self, x):
         # padding on the both ends of time series
-        front = x[:, 0:1, :, :].repeat(1, (self.kernel_size - 1) // 2, 1, 1)
-        end = x[:, -1:, :, :].repeat(1, (self.kernel_size - 1) // 2, 1, 1)
+        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
         x = torch.cat([front, x, end], dim=1)
-        x = self.avg(x.permute(0, 3, 2, 1))
-        x = x.permute(0, 3, 2, 1)
+        x = self.avg(x.permute(0, 2, 1))
+        x = x.permute(0, 2, 1)
         return x
 
 
@@ -42,7 +42,11 @@ class DLinear(nn.Module):
     Decomposition-Linear
     """
 
-    def __init__(self, kernel_size, seq_len, pred_len, individual, n_nodes):
+    """
+    Decomposition-Linear
+    """
+
+    def __init__(self, kernel_size, seq_len, pred_len, individual, n_nodes, input_dim):
         super(DLinear, self).__init__()
         self.seq_len = seq_len
         self.pred_len = pred_len
@@ -50,7 +54,8 @@ class DLinear(nn.Module):
         # Decompsition Kernel Size
         self.decompsition = series_decomp(kernel_size)
         self.individual = individual
-        self.channels = n_nodes
+        self.channels = n_nodes * input_dim
+        self.n_nodes = n_nodes
 
         if self.individual:
             self.Linear_Seasonal = nn.ModuleList()
@@ -72,19 +77,21 @@ class DLinear(nn.Module):
             # self.Linear_Trend.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
 
     def forward(self, input, **kwargs):
-        # x: [Batch, Input length, n_nodes, dim]
-        x = input
+        # (B, T, N, C)
+        x = input.reshape(*input.shape[:2], -1)
+        # x: [Batch, Input length, Channel]
         seasonal_init, trend_init = self.decompsition(x)
-        seasonal_init, trend_init = seasonal_init.permute(0, 3, 2, 1), trend_init.permute(0, 3, 2, 1)
+        seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
         if self.individual:
-            seasonal_output = torch.zeros([*seasonal_init.shape[:3], self.pred_len], dtype=seasonal_init.dtype).to(seasonal_init.device)
-            trend_output = torch.zeros([*trend_init.shape[:3], self.pred_len], dtype=trend_init.dtype).to(trend_init.device)
+            seasonal_output = torch.zeros([seasonal_init.size(0), seasonal_init.size(1), self.pred_len], dtype=seasonal_init.dtype).to(seasonal_init.device)
+            trend_output = torch.zeros([trend_init.size(0), trend_init.size(1), self.pred_len], dtype=trend_init.dtype).to(trend_init.device)
             for i in range(self.channels):
-                seasonal_output[:, :, i, :] = self.Linear_Seasonal[i](seasonal_init[:, :, i, :])
-                trend_output[:, :, i, :] = self.Linear_Trend[i](trend_init[:, :, i, :])
+                seasonal_output[:, i, :] = self.Linear_Seasonal[i](seasonal_init[:, i, :])
+                trend_output[:, i, :] = self.Linear_Trend[i](trend_init[:, i, :])
         else:
             seasonal_output = self.Linear_Seasonal(seasonal_init)
             trend_output = self.Linear_Trend(trend_init)
 
         x = seasonal_output + trend_output
-        return x.permute(0, 3, 2, 1)  # to [Batch, Output length, n_nodes, dim]
+        x = x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
+        return x.reshape(*x.shape[:2], self.n_nodes, -1)  # (B, T, N, C)
