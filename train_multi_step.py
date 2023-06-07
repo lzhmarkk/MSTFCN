@@ -183,17 +183,18 @@ if __name__ == "__main__":
     print("\n" + "-" * 30)
     # test data
     print('test|horizon', end='')
-    for i in [2, 5, 11]:
+    steps = [args.horizon // 4 - 1, args.horizon // 2 - 1, args.horizon - 1]
+    for i in steps:
         print(f'\tMAE{i + 1}-mean\tRMSE{i + 1}-mean\tCORR{i + 1}-mean', end='')
     print("\n\t\t", end='')
-    for i in [2, 5, 11]:
+    for i in steps:
         print('{:.4f}\t{:.4f}\t{:.4f}\t'.format(mmae[i], mrmse[i], mcorr[i]), end='')
     print("\n")
 
     print("\t", end='')
-    for i in [2, 5, 11]:
+    for i in steps:
         print(f'\tMAE{i + 1}-std\tRMSE{i + 1}-std\tCORR3{i + 1}-std', end='')
     print("\n\t\t", end='')
-    for i in [2, 5, 11]:
+    for i in steps:
         print('{:.4f}\t{:.4f}\t{:.4f}\t'.format(smae[i], srmse[i], scorr[i]), end='')
     print("\n" + "-" * 30)
