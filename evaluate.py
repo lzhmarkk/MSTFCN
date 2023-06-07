@@ -18,17 +18,17 @@ def get_scores(output:np.ndarray, groud_truth:np.ndarray, mask, out_catagory: st
             if output.shape != groud_truth.shape:
                 groud_truth = np.expand_dims( groud_truth[...,0], axis=-1)
             assert output.shape == groud_truth.shape, f'{output.shape}, {groud_truth.shape}'
-            batch, steps, scores = output.shape[0], output.shape[1], defaultdict(dict)
+            batch, steps, scores, node = output.shape[0], output.shape[1], defaultdict(dict), output.shape[2]
             if detail:
                 for step in range(steps):
                     y_pred = np.reshape(output[:,step],(batch, -1))
                     y_true = np.reshape(groud_truth[:,step],(batch,-1))
                     scores['MAE'][f'horizon-{step}'] = masked_mae_np(y_pred, y_true, null_val=0.0)
                     scores['RMSE'][f'horizon-{step}'] = masked_rmse_np(y_pred, y_true, null_val=0.0)
-                    scores['MAPE'][f'horizon-{step}'] = masked_mape_np(y_pred, y_true, null_val=0.0) * 100.0
+                    scores['CORR'][f'horizon-{step}'] = masked_node_pcc_np(y_pred.swapaxes(1,-1).reshape((-1,node)), y_true.swapaxes(1,-1).reshape((-1,node)), null_val=0.0)
             scores['MAE']['all'] = masked_mae_np(output,groud_truth ,null_val=0.0)
             scores['RMSE']['all'] = masked_rmse_np( output,groud_truth, null_val=0.0)
-            scores['MAPE']['all'] = masked_mape_np( output,groud_truth, null_val=0.0) * 100.0
+            scores['CORR']['all'] = masked_node_pcc_np(output.swapaxes(2,-1).reshape((-1,node)), groud_truth.swapaxes(2,-1).reshape((-1,node)), null_val=0.0)
         else:
             if output.shape != groud_truth.shape:
                 groud_truth = np.expand_dims( groud_truth[...,0], axis=-1)
@@ -78,6 +78,20 @@ def node_pcc_np(x, y):
     mean_y = y.mean(axis=0)
     cor = ((x - mean_x) * (y - mean_y)).mean(0) / (sigma_x * sigma_y + 0.000000000001)
     return cor.mean()
+
+def masked_node_pcc_np(x, y, null_val=np.nan):
+    pcc = []
+    for _x, _y in zip(x.transpose(), y.transpose()):
+        if np.isnan(null_val):
+            mask = ~np.isnan(_y)
+        else:
+            mask = np.not_equal(_y, null_val)
+        _x = np.expand_dims(_x[mask], axis=1)
+        _y = np.expand_dims(_y[mask], axis=1)
+        if any(mask):
+            pcc.append(node_pcc_np(_x, _y))
+    return np.mean(pcc).item()
+
 
 def mae_np(preds, labels):
     mae = np.abs(np.subtract(preds, labels)).astype('float32')
