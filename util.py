@@ -207,6 +207,8 @@ def get_model(args):
                       residual_channels=args.residual_channels, skip_channels=args.skip_channels,
                       end_channels=args.end_channels, window=args.window, horizon=args.horizon, in_dim=args.input_dim,
                       out_dim=args.output_dim, layers=args.layers, propalpha=args.propalpha, tanhalpha=args.tanhalpha)
+    elif args.model_name == 'STMAN':
+        model = STMAN(input_dim=args.input_dim, P=args.window, Q=args.horizon, drop_rate=args.dropout)
     else:
         raise ValueError(f"Model {args.model_name} is not found")
     return model

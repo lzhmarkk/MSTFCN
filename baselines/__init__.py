@@ -31,5 +31,6 @@ __all__ = [
     "MOHER",
     "STCGNN",
     "STSHN",
-    "CoGNN"
+    "CoGNN",
+    "STMAN"
 ]
