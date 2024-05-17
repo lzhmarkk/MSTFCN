@@ -1,8 +1,8 @@
-# A Simple Framework for Multimodal Spatial-Temporal Data Modeling
+# Multi-mode Spatial-Temporal Data Modeling with Fully Connected Networks
 
-This is PyTorch implementation of SimMST in the following paper:
+This is PyTorch implementation of MSTFCN in the following paper:
 
-**A Simple Framework for Multimodal Spatial-Temporal Data Modeling**
+**Multi-mode Spatial-Temporal Data Modeling with Fully Connected Networks**. KSEM, 2024.
 
 ## Data
 
