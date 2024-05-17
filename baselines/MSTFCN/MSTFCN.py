@@ -5,10 +5,10 @@ from .TemporalMixer import TemporalMixer
 from .SpatialMixer import SpatialMixer
 
 
-class CRGNNBlock(nn.Module):
+class MSTFCNBlock(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, propalpha, residual_channels, conv_channels,
                  temporal_func, begin_length, end_length):
-        super(CRGNNBlock, self).__init__()
+        super(MSTFCNBlock, self).__init__()
         self.device = device
         self.layer_norm_affine = True
 
@@ -50,11 +50,11 @@ class CRGNNBlock(nn.Module):
         return h
 
 
-class CRGNN(nn.Module):
+class MSTFCN(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, propalpha, layers, residual_channels, conv_channels, skip_channels,
                  end_channels, temporal_func, add_time):
-        super(CRGNN, self).__init__()
+        super(MSTFCN, self).__init__()
         self.device = device
         self.num_nodes = num_nodes
 
@@ -72,12 +72,12 @@ class CRGNN(nn.Module):
             begin_length = window - (j - 1) * (window // layers)
             end_length = max(window - j * (window // layers), 1)
 
-            self.mixer_layers.append(CRGNNBlock(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth,
-                                                dropout=dropout, propalpha=propalpha,
-                                                residual_channels=residual_channels,
-                                                conv_channels=conv_channels,
-                                                temporal_func=temporal_func,
-                                                begin_length=begin_length, end_length=end_length))
+            self.mixer_layers.append(MSTFCNBlock(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth,
+                                                 dropout=dropout, propalpha=propalpha,
+                                                 residual_channels=residual_channels,
+                                                 conv_channels=conv_channels,
+                                                 temporal_func=temporal_func,
+                                                 begin_length=begin_length, end_length=end_length))
 
             self.skip_convs.append(nn.Conv2d(in_channels=conv_channels,
                                              out_channels=skip_channels,

@@ -2,7 +2,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .CRGNN import CRGNN
+from .MSTFCN import MSTFCN
 from .GraphConstructor import CrossRelationGraphConstructor
 from .TimeEncoder import TimeEncoder
 
@@ -40,12 +40,12 @@ class CRGNNMix(nn.Module):
 
         models = []
         for i in range(self.n_mix):
-            models.append(CRGNN(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
-                                input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
-                                propalpha=propalpha, layers=layers,
-                                residual_channels=residual_channels, conv_channels=conv_channels,
-                                skip_channels=skip_channels, end_channels=end_channels,
-                                temporal_func=temporal_func, add_time=add_time))
+            models.append(MSTFCN(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
+                                 input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
+                                 propalpha=propalpha, layers=layers,
+                                 residual_channels=residual_channels, conv_channels=conv_channels,
+                                 skip_channels=skip_channels, end_channels=end_channels,
+                                 temporal_func=temporal_func, add_time=add_time))
         self.models = nn.ModuleList(models)
 
         if self.add_time:
