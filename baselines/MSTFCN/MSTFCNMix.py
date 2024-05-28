@@ -1,17 +1,16 @@
-from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .MSTFCN import MSTFCN
+from .MSTFCNMode import MSTFCNMode
 from .GraphConstructor import CrossRelationGraphConstructor
 from .TimeEncoder import TimeEncoder
 
 
-class CRGNNMix(nn.Module):
+class MSTFCN(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, subgraph_size, node_dim, tanhalpha, propalpha,
                  layers, residual_channels, conv_channels, skip_channels, end_channels, cross, temporal_func, add_time):
-        super(CRGNNMix, self).__init__()
+        super(MSTFCN, self).__init__()
 
         self.n_mix = len(input_dim)
         self.input_dim = input_dim
@@ -40,16 +39,16 @@ class CRGNNMix(nn.Module):
 
         models = []
         for i in range(self.n_mix):
-            models.append(MSTFCN(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
-                                 input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
-                                 propalpha=propalpha, layers=layers,
-                                 residual_channels=residual_channels, conv_channels=conv_channels,
-                                 skip_channels=skip_channels, end_channels=end_channels,
-                                 temporal_func=temporal_func, add_time=add_time))
+            models.append(MSTFCNMode(device=device, num_nodes=num_nodes, gcn_depth=gcn_depth, dropout=dropout,
+                                     input_dim=input_dim[i], output_dim=output_dim[i], window=window, horizon=horizon,
+                                     propalpha=propalpha, layers=layers,
+                                     residual_channels=residual_channels, conv_channels=conv_channels,
+                                     skip_channels=skip_channels, end_channels=end_channels,
+                                     temporal_func=temporal_func, add_time=add_time))
         self.models = nn.ModuleList(models)
 
         if self.add_time:
-            self.time_encoder = TimeEncoder(dim=skip_channels, length=window)
+            self.time_encoder = TimeEncoder(dim=residual_channels // 2, length=window)
         self.dropout = nn.Dropout(dropout)
 
         if self.cross:
@@ -70,11 +69,12 @@ class CRGNNMix(nn.Module):
 
         x = x.transpose(3, 1)  # (bs, mix_in_dim, n_nodes, window)
         x = [x[:, p[0]: p[1]] for p in self.in_split]  # (n_mix, bs, in_dim, n_nodes, window)
+        b = [self.time_encoder.embed_time(time) for _ in range(self.n_mix)]  # (n_mix, bs, res_channel, n_nodes, window)
 
-        output = []
+        output, output_b = [], []
         for i in range(self.n_mix):
-            _output = self.models[i].skip0(self.dropout(x[i]))
-            output.append(_output)
+            output.append(self.models[i].skip0(self.dropout(x[i])))
+            output_b.append(0.)
 
         for i in range(self.n_mix):
             x[i] = self.models[i].start_conv(x[i])  # (bs, res_channel, n_nodes, recep_field)
@@ -84,12 +84,12 @@ class CRGNNMix(nn.Module):
             for i in range(self.n_mix):
                 residuals.append(x[i])
 
+            # temporal
             for i in range(self.n_mix):
                 x[i] = self.models[i].temporal_layer(x[i], l)
+                b[i] = self.models[i].temporal_layer(b[i], l)
 
-                # _out = self.models[i].skip_convs[l](x[i])  # (bs, skp_channel, n_nodes, 1)
-                # output[i] = _out + output[i]
-
+            # spatial & mode
             for i in range(self.n_mix):
                 h = []
                 for j in range(self.n_mix):
@@ -103,23 +103,21 @@ class CRGNNMix(nn.Module):
                 h = torch.stack(h, 0).sum(0)
                 x[i] = h
 
+            # channel
             for i in range(self.n_mix):
-                x[i] = self.models[i].channel_layer(x[i], l)
+                h = self.models[i].channel_layer(torch.cat([x[i], b[i]], dim=1), l)
+                x[i], b[i] = h.chunk(2, dim=1)
 
+            # to output
             for i in range(self.n_mix):
-                # (bs, res_channel, n_nodes, recep_filed + (1 - max_ker_size) * i)
-                # x[i] = x[i] + residuals[i][:, :, :, -x[i].size(3):]
-                _out = self.models[i].skip_convs[l](self.dropout(x[i]))  # (bs, skp_channel, n_nodes, 1)
-                output[i] = _out + output[i]
+                # (bs, skp_channel, n_nodes, 1)
+                output[i] += self.models[i].skip_convs[l](self.dropout(x[i]))
+                output_b[i] += self.models[i].skip_convs[l](self.dropout(b[i]))
 
         for i in range(self.n_mix):
-            # output[i] = self.models[i].skipE(x[i]) + output[i]
-            x[i] = F.relu(output[i])
-
-            # time encoding
-            x[i] = self.time_encoder(x[i], time) if self.add_time else x[i]
+            x[i] = torch.cat([output[i], output_b[i]], dim=1)
+            x[i] = F.relu(x[i])
             x[i] = self.models[i].end_conv(x[i])
-
             x[i] = x[i].reshape(bs, self.horizon, self.output_dim[i], self.n_nodes, 1).squeeze(-1).permute(0, 1, 3, 2)
 
         x = torch.cat(x, -1)

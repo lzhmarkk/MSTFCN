@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from .TemporalMixer import TemporalMixer
 from .SpatialMixer import SpatialMixer
+from .TimeEncoder import TimeEncoder
 
 
 class MSTFCNBlock(nn.Module):
@@ -20,10 +21,10 @@ class MSTFCNBlock(nn.Module):
             SpatialMixer(conv_channels, residual_channels, gcn_depth, dropout, propalpha),
             SpatialMixer(conv_channels, residual_channels, gcn_depth, dropout, propalpha)
         ])
-        self.channel_mixer = nn.Sequential(torch.nn.Conv2d(conv_channels, conv_channels // 2, kernel_size=(1, 1),
+        self.channel_mixer = nn.Sequential(torch.nn.Conv2d(2 * conv_channels, conv_channels, kernel_size=(1, 1),
                                                            padding=(0, 0), stride=(1, 1), bias=True),
                                            nn.GELU(),
-                                           torch.nn.Conv2d(conv_channels // 2, residual_channels, kernel_size=(1, 1),
+                                           torch.nn.Conv2d(conv_channels, 2 * residual_channels, kernel_size=(1, 1),
                                                            padding=(0, 0), stride=(1, 1), bias=True)
                                            )
 
@@ -50,11 +51,11 @@ class MSTFCNBlock(nn.Module):
         return h
 
 
-class MSTFCN(nn.Module):
+class MSTFCNMode(nn.Module):
     def __init__(self, device, num_nodes, gcn_depth, dropout, input_dim, output_dim,
                  window, horizon, propalpha, layers, residual_channels, conv_channels, skip_channels,
                  end_channels, temporal_func, add_time):
-        super(MSTFCN, self).__init__()
+        super(MSTFCNMode, self).__init__()
         self.device = device
         self.num_nodes = num_nodes
 
@@ -77,7 +78,8 @@ class MSTFCN(nn.Module):
                                                  residual_channels=residual_channels,
                                                  conv_channels=conv_channels,
                                                  temporal_func=temporal_func,
-                                                 begin_length=begin_length, end_length=end_length))
+                                                 begin_length=begin_length,
+                                                 end_length=end_length))
 
             self.skip_convs.append(nn.Conv2d(in_channels=conv_channels,
                                              out_channels=skip_channels,
@@ -89,7 +91,7 @@ class MSTFCN(nn.Module):
         #                        kernel_size=(1, end_length), bias=True)
 
         # final output
-        self.end_conv = nn.Sequential(nn.Conv2d(in_channels=(3 if add_time else 1) * skip_channels,
+        self.end_conv = nn.Sequential(nn.Conv2d(in_channels=(2 if add_time else 1) * skip_channels,
                                                 out_channels=end_channels,
                                                 kernel_size=(1, 1),
                                                 bias=True),

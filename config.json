@@ -1,8 +1,8 @@
 {
-    "model_name": "CRGNN",
+    "model_name": "MSTFCN",
     "data": "nyc-mix",
-    "device": "cuda:1",
-    "expid": "dual-gcn-emb",
+    "device": "cpu",
+    "expid": "exp_name",
 
     "epochs": 1000,
     "early_stop": true,

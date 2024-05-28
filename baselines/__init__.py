@@ -7,7 +7,7 @@ from .MLPMixer.MLPMixer import MLPMixer
 from .MTGNN.MTGNN import MTGNN
 from .MTGNNMix.MTGNNMix import MTGNNMix
 from .FCGAGA.FCGAGA import FCGAGA
-from .CRGNN.CRGNNMix import CRGNNMix as CRGNN
+from .MSTFCN.MSTFCNMix import MSTFCN
 from .STGCN.STGCN import STGCN
 from .STID.STID import STID
 from .MOHER.MOHER import MOHER
@@ -25,7 +25,7 @@ __all__ = [
     "MTGNN",
     "MTGNNMix",
     "FCGAGA",
-    "CRGNN",
+    "MSTFCN",
     "STGCN",
     "STID",
     "MOHER",

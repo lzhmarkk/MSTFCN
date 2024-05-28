@@ -13,6 +13,11 @@ class TimeEncoder(nn.Module):
         self.time_day_emb = nn.Parameter(torch.randn(48, dim))
         self.time_week_emb = nn.Parameter(torch.randn(7, dim))
 
+    def embed_time(self, time):
+        time_in_day_emb = self.time_day_emb[(time[..., -2] * 48).long()].permute(0, 3, 2, 1)
+        day_in_week_emb = self.time_week_emb[(time[..., -1]).long()].permute(0, 3, 2, 1)
+        return torch.cat([time_in_day_emb, day_in_week_emb], dim=1)
+
     def forward(self, x, time):
         time_in_day_emb = self.time_day_emb[(time[..., -2] * 48).long()].permute(0, 3, 2, 1)
         day_in_week_emb = self.time_week_emb[(time[..., -1]).long()].permute(0, 3, 2, 1)

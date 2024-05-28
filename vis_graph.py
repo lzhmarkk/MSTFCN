@@ -5,7 +5,7 @@ dataset = 'nyc-mix'
 name = 'sensitivity-base1'
 gcn_depth = 3
 if __name__ == '__main__':
-    model = torch.load(open(f"./saves/{dataset}/CRGNN/{name}/best-model.pt", "rb"), map_location='cpu')
+    model = torch.load(open(f"./saves/{dataset}/MSTFCN/{name}/best-model.pt", "rb"), map_location='cpu')
     model.graph_constructor.device = torch.device('cpu')
     graphs = model.graph_constructor().detach().cpu()
 

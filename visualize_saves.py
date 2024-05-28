@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 dataset = "beijing-mix"
-model = 'CRGNN'
+model = 'MSTFCN'
 expid = 'mixer-sematicGraph-noSkip-notime0'
 selected_variables = [2, 30, 53, 70, 103]
 
