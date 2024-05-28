@@ -7,7 +7,7 @@ from .MLPMixer.MLPMixer import MLPMixer
 from .MTGNN.MTGNN import MTGNN
 from .MTGNNMix.MTGNNMix import MTGNNMix
 from .FCGAGA.FCGAGA import FCGAGA
-from .MSTFCN.MSTFCNMix import MSTFCN
+from .MSTFCN.MSTFCN import MSTFCN
 from .STGCN.STGCN import STGCN
 from .STID.STID import STID
 from .MOHER.MOHER import MOHER
