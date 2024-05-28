@@ -276,7 +276,7 @@ class MTGNN(nn.Module):
 
         self.add_time = add_time
         if add_time:
-            from baselines.CRGNN.CRGNNMix import TimeEncoder
+            from baselines.MSTFCN.CRGNNMix import TimeEncoder
             self.t_enc = TimeEncoder(self.skip_channels, self.seq_length)
 
     def forward(self, input, **kwargs):

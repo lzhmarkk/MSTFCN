@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from .GraphConstructor import GraphConstructor
 from .CMRGCN import CMRGCN
-from ..CRGNN.TimeEncoder import TimeEncoder
+from ..MSTFCN.TimeEncoder import TimeEncoder
 
 
 class MOHER(nn.Module):

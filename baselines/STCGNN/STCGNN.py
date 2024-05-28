@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from .MGPGen import MGP_Gen
-from ..CRGNN.TimeEncoder import TimeEncoder
+from ..MSTFCN.TimeEncoder import TimeEncoder
 
 
 class BDG_Dif(nn.Module):  # 2D graph convolution operation: 1 input

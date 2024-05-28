@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..MTGNN.MTGNN import dilated_inception, mixprop, LayerNorm
-from ..CRGNN.GraphConstructor import CrossRelationGraphConstructor
+from ..MSTFCN.GraphConstructor import CrossRelationGraphConstructor
 
 
 class graph_directed_sep_init(nn.Module):

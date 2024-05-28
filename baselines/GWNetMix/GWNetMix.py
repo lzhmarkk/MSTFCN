@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ..GWNet.GWNet import GWNet, linear, nconv
-from ..CRGNN.TimeEncoder import TimeEncoder
-from ..CRGNN.GraphConstructor import CrossRelationGraphConstructor
+from ..MSTFCN.TimeEncoder import TimeEncoder
+from ..MSTFCN.GraphConstructor import CrossRelationGraphConstructor
 
 
 class gcn(nn.Module):
